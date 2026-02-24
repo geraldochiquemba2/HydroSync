@@ -5,6 +5,9 @@ import {
   ThermometerSun, Sprout, CheckCircle2, AlertTriangle, TrendingUp, Sun, Wind,
   Cloud, CloudLightning, Waves, Layers, Plus, Trash2, X
 } from "lucide-react";
+import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
 import { Button } from "@/components/ui/button";
@@ -40,7 +43,6 @@ const healthHistoryData = [
   { name: 'Sem 4', ndvi: 0.82 },
   { name: 'Sem 5', ndvi: 0.88 },
 ];
-
 interface Plot {
   id: number;
   name: string;
@@ -50,6 +52,24 @@ interface Plot {
   lat: string;
   lng: string;
   altitude: string;
+}
+
+// Fix Leaflet marker icon issue
+// @ts-ignore
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+});
+
+function MapEvents({ onLocationSelect }: { onLocationSelect: (lat: number, lng: number) => void }) {
+  useMapEvents({
+    click(e) {
+      onLocationSelect(e.latlng.lat, e.latlng.lng);
+    },
+  });
+  return null;
 }
 
 export default function Dashboard() {
@@ -100,9 +120,7 @@ export default function Dashboard() {
 
       {/* Sidebar Navigation */}
       <aside
-        className={`${isSidebarOpen ? 'w-64' : 'w-20'} 
-          transition-all duration-300 ease-in-out hidden md:flex flex-col 
-          bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 z-20`}
+        className={`${isSidebarOpen ? 'w-64' : 'w-20'} transition-all duration-300 ease-in-out hidden md:flex flex-col bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 z-20`}
       >
         <div className="h-16 flex items-center justify-between px-4 border-b border-slate-200 dark:border-slate-800">
           {isSidebarOpen && (
@@ -349,26 +367,36 @@ export default function Dashboard() {
                         <Plus className="w-4 h-4" /> Adicionar Talhão
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-[800px] p-0 overflow-hidden border-0 gap-0">
-                      <div className="flex flex-col md:flex-row h-full max-h-[90vh]">
+                    <DialogContent className="sm:max-w-[1000px] p-0 overflow-hidden border-0 gap-0">
+                      <div className="flex flex-col md:flex-row h-[600px] max-h-[90vh]">
                         {/* Map Section */}
-                        <div className="w-full md:w-1/2 h-48 md:h-auto relative bg-slate-200">
-                          <img src={satelliteFarm} className="w-full h-full object-cover" alt="Mapa" />
-                          <div className="absolute inset-0 bg-black/20 hover:bg-transparent transition-colors cursor-crosshair flex items-center justify-center group">
-                            <div className="bg-white/90 backdrop-blur p-2 rounded-lg shadow-xl border border-slate-200 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <span className="text-[10px] font-mono text-slate-800 flex items-center gap-1">
-                                <MapPin className="w-3 h-3 text-primary" /> Definir Ponto no Mapa
-                              </span>
-                            </div>
-                            <div className="absolute bottom-4 left-4 bg-black/60 backdrop-blur text-white p-2 rounded-md text-[10px] space-y-0.5 border border-white/10 uppercase tracking-widest font-bold">
-                              <div>Mapa Híbrido</div>
-                              <div className="text-primary">Camada Satélite Ativa</div>
-                            </div>
+                        <div className="w-full md:w-3/5 h-64 md:h-full relative bg-slate-200 z-0">
+                          <MapContainer
+                            center={[-11.2027, 17.8739]}
+                            zoom={6}
+                            style={{ height: '100%', width: '100%' }}
+                            scrollWheelZoom={true}
+                          >
+                            <TileLayer
+                              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                            />
+                            <MapEvents onLocationSelect={(lat, lng) => {
+                              setNewPlot(prev => ({ ...prev, lat: lat.toFixed(6), lng: lng.toFixed(6) }));
+                            }} />
+                            {newPlot.lat && newPlot.lng && (
+                              <Marker position={[Number(newPlot.lat), Number(newPlot.lng)]} />
+                            )}
+                          </MapContainer>
+                          <div className="absolute top-4 left-4 z-[1000] bg-white/90 backdrop-blur p-2 rounded-lg shadow-xl border border-slate-200 pointer-events-none">
+                            <span className="text-[10px] font-mono text-slate-800 flex items-center gap-1">
+                              <MapPin className="w-3 h-3 text-primary" /> Clique para definir a localização em Angola
+                            </span>
                           </div>
                         </div>
 
                         {/* Form Section */}
-                        <div className="w-full md:w-1/2 p-6 flex flex-col bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800">
+                        <div className="w-full md:w-2/5 p-6 flex flex-col bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 overflow-y-auto">
                           <DialogHeader className="mb-6">
                             <DialogTitle className="text-xl font-heading">Novo Mapeamento</DialogTitle>
                             <DialogDescription>
@@ -510,9 +538,9 @@ function NavItem({ icon, label, active = false, onClick, isOpen }: { icon: React
         ${active
           ? 'bg-primary/10 text-primary font-medium'
           : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200'
-        }`}
+        } `}
     >
-      <div className={`${active ? 'text-primary' : 'text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300'}`}>
+      <div className={`${active ? 'text-primary' : 'text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300'} `}>
         {icon}
       </div>
       {isOpen && <span>{label}</span>}
