@@ -834,16 +834,14 @@ export default function Dashboard() {
                             <div className="mt-2 font-bold text-xs">{selectedProvince.weather.temp + (i - 2)}°</div>
                           </div>
                         ))}
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                  </Card>
-            )}
-          </div>
-            )}
-
-          {activeTab === "plots" && (
-            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                    </Card>
+                  )}
+                </div>
+              )}
+            {activeTab === "plots" && (
+              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
               <div className="flex justify-between items-center">
                 <h2 className="text-2xl font-heading font-bold text-slate-900 dark:text-white">Gerenciamento de Talhões</h2>
                 <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
