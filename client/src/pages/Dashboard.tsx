@@ -4,7 +4,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Plot as DbPlot, InsertPlot } from "@shared/schema";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Droplets, Map, Activity, CloudRain,
   Settings, User, Bell, ChevronRight, Menu, MapPin,
@@ -98,18 +98,25 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
 });
 
-function MapEvents({ onLocationSelect }: { onLocationSelect: (lat: number, lng: number) => void }) {
+function MapEvents({ onLocationSelect, onMapChange }: { onLocationSelect: (lat: number, lng: number) => void, onMapChange: (center: [number, number], zoom: number) => void }) {
   useMapEvents({
-    click(e) {
+    click(e: any) {
       onLocationSelect(e.latlng.lat, e.latlng.lng);
     },
+    moveend(e: any) {
+      const map = e.target;
+      const center = map.getCenter();
+      onMapChange([center.lat, center.lng], map.getZoom());
+    }
   });
   return null;
 }
 
 function MapController({ center, zoom }: { center: [number, number], zoom: number }) {
   const map = useMap();
-  map.setView(center, zoom);
+  useEffect(() => {
+    map.setView(center, zoom);
+  }, [center, zoom, map]);
   return null;
 }
 
@@ -509,36 +516,39 @@ export default function Dashboard() {
                               url="https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
                               subdomains={['mt0', 'mt1', 'mt2', 'mt3']}
                             />
-                            <MapEvents onLocationSelect={(lat, lng) => {
-                              if (!newPlot.lat || !newPlot.lng) {
-                                // Primeiro clique: Centro e Telemetria
-                                const simulatedAlt = Math.floor((Math.abs(lat) * 15) + (Math.abs(lng) * 8) + 350);
-                                setNewPlot(prev => ({
-                                  ...prev,
-                                  lat: lat.toFixed(6),
-                                  lng: lng.toFixed(6),
-                                  altitude: simulatedAlt.toString()
-                                }));
-                                toast({
-                                  title: "Centro Definido",
-                                  description: "Agora clique em 4 pontos para delimitar a área.",
-                                });
-                              } else if (polygonPoints.length < 4) {
-                                // Próximos 4 cliques: Polígono
-                                const newPoints: [number, number][] = [...polygonPoints, [lat, lng]];
-                                setPolygonPoints(newPoints);
-
-                                if (newPoints.length === 4) {
-                                  // Calcular área automaticamente
-                                  const areaHectares = calculateArea(newPoints);
-                                  setNewPlot(prev => ({ ...prev, area: areaHectares.toString() }));
+                            <MapEvents
+                              onMapChange={(center, zoom) => setMapFocus({ center, zoom })}
+                              onLocationSelect={(lat, lng) => {
+                                if (!newPlot.lat || !newPlot.lng) {
+                                  // Primeiro clique: Centro e Telemetria
+                                  const simulatedAlt = Math.floor((Math.abs(lat) * 15) + (Math.abs(lng) * 8) + 350);
+                                  setNewPlot(prev => ({
+                                    ...prev,
+                                    lat: lat.toFixed(6),
+                                    lng: lng.toFixed(6),
+                                    altitude: simulatedAlt.toString()
+                                  }));
                                   toast({
-                                    title: "Zona Delimitada",
-                                    description: `Área de ${areaHectares}ha calculada automaticamente.`,
+                                    title: "Centro Definido",
+                                    description: "Agora clique em 4 pontos para delimitar a área.",
                                   });
+                                } else if (polygonPoints.length < 4) {
+                                  // Próximos 4 cliques: Polígono
+                                  const newPoints: [number, number][] = [...polygonPoints, [lat, lng]];
+                                  setPolygonPoints(newPoints);
+
+                                  if (newPoints.length === 4) {
+                                    // Calcular área automaticamente
+                                    const areaHectares = calculateArea(newPoints);
+                                    setNewPlot(prev => ({ ...prev, area: areaHectares.toString() }));
+                                    toast({
+                                      title: "Zona Delimitada",
+                                      description: `Área de ${areaHectares}ha calculada automaticamente.`,
+                                    });
+                                  }
                                 }
-                              }
-                            }} />
+                              }}
+                            />
                             {newPlot.lat && newPlot.lng && (
                               <Marker position={[Number(newPlot.lat), Number(newPlot.lng)]} />
                             )}
