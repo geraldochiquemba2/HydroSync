@@ -5,7 +5,7 @@ import {
   ThermometerSun, Sprout, CheckCircle2, AlertTriangle, TrendingUp, Sun, Wind,
   Cloud, CloudLightning, Waves, Layers, Plus, Trash2, X
 } from "lucide-react";
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Polygon, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
@@ -52,7 +52,28 @@ interface Plot {
   lat: string;
   lng: string;
   altitude: string;
+  boundaryPoints?: [number, number][];
 }
+
+// Utility to calculate polygon area in hectares
+const calculateArea = (points: [number, number][]): number => {
+  if (points.length < 3) return 0;
+  let area = 0;
+  for (let i = 0; i < points.length; i++) {
+    const j = (i + 1) % points.length;
+    // Flat approximation (Degrees to Meters approx)
+    // 1 deg lat approx 111.32km
+    // 1 deg lng approx 111.32km * cos(lat)
+    const lat1 = points[i][0] * (Math.PI / 180);
+    const lng1 = points[i][1] * (Math.PI / 180);
+    const lat2 = points[j][0] * (Math.PI / 180);
+    const lng2 = points[j][1] * (Math.PI / 180);
+
+    area += (lng2 - lng1) * (2 + Math.sin(lat1) + Math.sin(lat2));
+  }
+  area = Math.abs(area * 6378137 * 6378137 / 2.0);
+  return Number((area / 10000).toFixed(2)); // Convert m2 to hectares
+};
 
 // Fix Leaflet marker icon issue
 // @ts-ignore
@@ -72,6 +93,12 @@ function MapEvents({ onLocationSelect }: { onLocationSelect: (lat: number, lng: 
   return null;
 }
 
+function MapController({ center, zoom }: { center: [number, number], zoom: number }) {
+  const map = useMap();
+  map.setView(center, zoom);
+  return null;
+}
+
 export default function Dashboard() {
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
@@ -82,10 +109,12 @@ export default function Dashboard() {
   ]);
 
   const [newPlot, setNewPlot] = useState({ name: "", crop: "Soja", area: "", lat: "", lng: "", altitude: "" });
+  const [polygonPoints, setPolygonPoints] = useState<[number, number][]>([]);
+  const [mapFocus, setMapFocus] = useState<{ center: [number, number], zoom: number }>({ center: [-11.2027, 17.8739], zoom: 6 });
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
   const addPlot = () => {
-    if (!newPlot.name || !newPlot.area || !newPlot.lat || !newPlot.lng) return;
+    if (!newPlot.name || !newPlot.lat || !newPlot.lng) return;
     const plot: Plot = {
       id: Date.now(),
       name: newPlot.name,
@@ -95,14 +124,34 @@ export default function Dashboard() {
       lat: newPlot.lat,
       lng: newPlot.lng,
       altitude: newPlot.altitude || "0",
+      boundaryPoints: polygonPoints.length >= 3 ? polygonPoints : undefined
     };
     setPlots([...plots, plot]);
     setNewPlot({ name: "", crop: "Soja", area: "", lat: "", lng: "", altitude: "" });
+    setPolygonPoints([]);
     setIsAddDialogOpen(false);
     toast({
-      title: "Talhão Adicionado",
-      description: `${plot.name} foi registrado com sucesso via mapeamento híbrido.`,
+      title: "Área Delimitada",
+      description: `${plot.name} registrado com ${polygonPoints.length} pontos de limite e ${plot.area}ha.`,
     });
+  };
+
+  const viewOnMap = (plot: Plot) => {
+    setNewPlot({
+      name: plot.name,
+      crop: plot.crop,
+      area: plot.area.toString(),
+      lat: plot.lat,
+      lng: plot.lng,
+      altitude: plot.altitude
+    });
+    if (plot.boundaryPoints) {
+      setPolygonPoints(plot.boundaryPoints);
+    } else {
+      setPolygonPoints([]);
+    }
+    setMapFocus({ center: [Number(plot.lat), Number(plot.lng)], zoom: 16 });
+    setIsAddDialogOpen(true);
   };
 
   const removePlot = (id: number) => {
@@ -363,7 +412,14 @@ export default function Dashboard() {
                   <h2 className="text-2xl font-heading font-bold text-slate-900 dark:text-white">Gerenciamento de Talhões</h2>
                   <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
                     <DialogTrigger asChild>
-                      <Button className="gap-2 shadow-lg hover:shadow-primary/20 transition-all">
+                      <Button
+                        className="gap-2 shadow-lg hover:shadow-primary/20 transition-all"
+                        onClick={() => {
+                          setNewPlot({ name: "", crop: "Soja", area: "", lat: "", lng: "", altitude: "" });
+                          setPolygonPoints([]);
+                          setMapFocus({ center: [-11.2027, 17.8739], zoom: 6 });
+                        }}
+                      >
                         <Plus className="w-4 h-4" /> Adicionar Talhão
                       </Button>
                     </DialogTrigger>
@@ -372,43 +428,80 @@ export default function Dashboard() {
                         {/* Map Section */}
                         <div className="w-full md:w-3/5 h-64 md:h-full relative bg-slate-200 z-0">
                           <MapContainer
-                            center={[-11.2027, 17.8739]}
-                            zoom={6}
+                            center={mapFocus.center}
+                            zoom={mapFocus.zoom}
                             style={{ height: '100%', width: '100%' }}
                             scrollWheelZoom={true}
                           >
+                            <MapController center={mapFocus.center} zoom={mapFocus.zoom} />
                             <TileLayer
                               attribution='&copy; Google Maps'
                               url="https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
                               subdomains={['mt0', 'mt1', 'mt2', 'mt3']}
                             />
                             <MapEvents onLocationSelect={(lat, lng) => {
-                              // Simulação de telemetria baseada em coordenadas reais (Ex: Angola GBSA)
-                              const simulatedAlt = Math.floor((Math.abs(lat) * 15) + (Math.abs(lng) * 8) + 350);
-                              const simulatedArea = (Math.random() * 120 + 40).toFixed(2);
+                              if (!newPlot.lat || !newPlot.lng) {
+                                // Primeiro clique: Centro e Telemetria
+                                const simulatedAlt = Math.floor((Math.abs(lat) * 15) + (Math.abs(lng) * 8) + 350);
+                                setNewPlot(prev => ({
+                                  ...prev,
+                                  lat: lat.toFixed(6),
+                                  lng: lng.toFixed(6),
+                                  altitude: simulatedAlt.toString()
+                                }));
+                                toast({
+                                  title: "Centro Definido",
+                                  description: "Agora clique em 4 pontos para delimitar a área.",
+                                });
+                              } else if (polygonPoints.length < 4) {
+                                // Próximos 4 cliques: Polígono
+                                const newPoints: [number, number][] = [...polygonPoints, [lat, lng]];
+                                setPolygonPoints(newPoints);
 
-                              setNewPlot(prev => ({
-                                ...prev,
-                                lat: lat.toFixed(6),
-                                lng: lng.toFixed(6),
-                                altitude: simulatedAlt.toString(),
-                                area: simulatedArea
-                              }));
-
-                              toast({
-                                title: "Telemetria Capturada",
-                                description: `Coordenadas e altitude (${simulatedAlt}m) processadas via satélite.`,
-                              });
+                                if (newPoints.length === 4) {
+                                  // Calcular área automaticamente
+                                  const areaHectares = calculateArea(newPoints);
+                                  setNewPlot(prev => ({ ...prev, area: areaHectares.toString() }));
+                                  toast({
+                                    title: "Zona Delimitada",
+                                    description: `Área de ${areaHectares}ha calculada automaticamente.`,
+                                  });
+                                }
+                              }
                             }} />
                             {newPlot.lat && newPlot.lng && (
                               <Marker position={[Number(newPlot.lat), Number(newPlot.lng)]} />
                             )}
+                            {polygonPoints.length > 0 && (
+                              <Polygon
+                                positions={polygonPoints}
+                                pathOptions={{ color: 'yellow', fillColor: 'yellow', fillOpacity: 0.3 }}
+                              />
+                            )}
                           </MapContainer>
-                          <div className="absolute top-4 left-4 z-[1000] bg-white/90 backdrop-blur p-2 rounded-lg shadow-xl border border-slate-200 pointer-events-none">
-                            <span className="text-[10px] font-mono text-slate-800 flex items-center gap-1">
-                              <MapPin className="w-3 h-3 text-primary" /> Clique para definir a localização em Angola
-                            </span>
+                          <div className="absolute top-4 left-4 z-[1000] space-y-2">
+                            <div className="bg-white/90 backdrop-blur p-2 rounded-lg shadow-xl border border-slate-200 pointer-events-none">
+                              <span className="text-[10px] uppercase font-bold text-primary flex items-center gap-1">
+                                <Activity className="w-3 h-3" /> Modo: {!newPlot.lat ? "Definir Centro" : polygonPoints.length < 4 ? `Delimitar (${polygonPoints.length}/4)` : "Pronto"}
+                              </span>
+                            </div>
+                            <div className="bg-white/90 backdrop-blur p-2 rounded-lg shadow-xl border border-slate-200 pointer-events-none">
+                              <span className="text-[10px] font-mono text-slate-800 flex items-center gap-1">
+                                <MapPin className="w-3 h-3 text-primary" />
+                                {!newPlot.lat ? "1º clique: Centro do Talhão" : polygonPoints.length < 4 ? "Clique nos limites da área" : "Área Delimitada com Sucesso"}
+                              </span>
+                            </div>
                           </div>
+                          {polygonPoints.length > 0 && (
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              className="absolute bottom-4 left-4 z-[1000] h-8 text-[10px]"
+                              onClick={() => { setPolygonPoints([]); setNewPlot(p => ({ ...p, area: "" })); }}
+                            >
+                              <Trash2 className="w-3 h-3 mr-1" /> Limpar Pontos
+                            </Button>
+                          )}
                         </div>
 
                         {/* Form Section */}
@@ -474,9 +567,10 @@ export default function Dashboard() {
                             <Button
                               onClick={addPlot}
                               className="w-full flex items-center justify-center gap-2 py-6 text-base"
-                              disabled={!newPlot.name || !newPlot.area || !newPlot.lat || !newPlot.lng}
+                              disabled={!newPlot.name || !newPlot.lat || !newPlot.lng || polygonPoints.length < 4}
                             >
-                              <Layers className="w-4 h-4" /> Registrar com GPS
+                              <Layers className="w-4 h-4" />
+                              {polygonPoints.length < 4 ? `Marque ${4 - polygonPoints.length} pontos para salvar` : "Registrar Talhão"}
                             </Button>
                           </DialogFooter>
                         </div>
@@ -523,7 +617,12 @@ export default function Dashboard() {
                           </div>
                         </div>
 
-                        <Button variant="outline" size="sm" className="w-full mt-2 group-hover:bg-primary group-hover:text-white transition-colors">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full mt-2 group-hover:bg-primary group-hover:text-white transition-colors"
+                          onClick={() => viewOnMap(plot)}
+                        >
                           Mapear Terreno
                         </Button>
                       </CardContent>
