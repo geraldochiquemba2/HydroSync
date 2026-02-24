@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { 
-  Droplets, Map, Activity, CloudRain, 
-  Settings, User, Bell, ChevronRight, Menu, MapPin, 
+import {
+  Droplets, Map, Activity, CloudRain,
+  Settings, User, Bell, ChevronRight, Menu, MapPin,
   ThermometerSun, Sprout, CheckCircle2, AlertTriangle, TrendingUp, Sun, Wind,
   Cloud, CloudLightning, Waves, Layers, Plus, Trash2, X
 } from "lucide-react";
@@ -47,35 +47,41 @@ interface Plot {
   crop: string;
   area: number;
   health: number;
+  lat: string;
+  lng: string;
+  altitude: string;
 }
 
 export default function Dashboard() {
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
   const [plots, setPlots] = useState<Plot[]>([
-    { id: 1, name: "Talhão 01", crop: "Soja", area: 120, health: 82 },
-    { id: 2, name: "Talhão 02", crop: "Milho", area: 240, health: 84 },
-    { id: 3, name: "Talhão 03", crop: "Algodão", area: 360, health: 86 },
+    { id: 1, name: "Talhão 01", crop: "Soja", area: 120, health: 82, lat: "-12.4567", lng: "-45.8901", altitude: "450" },
+    { id: 2, name: "Talhão 02", crop: "Milho", area: 240, health: 84, lat: "-12.4580", lng: "-45.8920", altitude: "455" },
+    { id: 3, name: "Talhão 03", crop: "Algodão", area: 360, health: 86, lat: "-12.4600", lng: "-45.8950", altitude: "460" },
   ]);
 
-  const [newPlot, setNewPlot] = useState({ name: "", crop: "Soja", area: "" });
+  const [newPlot, setNewPlot] = useState({ name: "", crop: "Soja", area: "", lat: "", lng: "", altitude: "" });
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
   const addPlot = () => {
-    if (!newPlot.name || !newPlot.area) return;
+    if (!newPlot.name || !newPlot.area || !newPlot.lat || !newPlot.lng) return;
     const plot: Plot = {
       id: Date.now(),
       name: newPlot.name,
       crop: newPlot.crop,
       area: Number(newPlot.area),
       health: Math.floor(Math.random() * (95 - 75 + 1)) + 75,
+      lat: newPlot.lat,
+      lng: newPlot.lng,
+      altitude: newPlot.altitude || "0",
     };
     setPlots([...plots, plot]);
-    setNewPlot({ name: "", crop: "Soja", area: "" });
+    setNewPlot({ name: "", crop: "Soja", area: "", lat: "", lng: "", altitude: "" });
     setIsAddDialogOpen(false);
     toast({
       title: "Talhão Adicionado",
-      description: `${plot.name} foi registrado com sucesso via satélite.`,
+      description: `${plot.name} foi registrado com sucesso via mapeamento híbrido.`,
     });
   };
 
@@ -91,9 +97,9 @@ export default function Dashboard() {
 
   return (
     <div className="flex min-h-screen bg-slate-50 dark:bg-slate-950">
-      
+
       {/* Sidebar Navigation */}
-      <aside 
+      <aside
         className={`${isSidebarOpen ? 'w-64' : 'w-20'} 
           transition-all duration-300 ease-in-out hidden md:flex flex-col 
           bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 z-20`}
@@ -123,7 +129,7 @@ export default function Dashboard() {
 
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        
+
         {/* Top Header */}
         <header className="h-16 flex items-center justify-between px-4 sm:px-6 lg:px-8 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 sticky top-0 z-10">
           <div className="flex items-center gap-4">
@@ -135,8 +141,8 @@ export default function Dashboard() {
 
           <div className="flex items-center gap-4">
             <div className="hidden sm:flex items-center gap-2 text-sm text-slate-500 mr-4">
-              <span className="flex items-center gap-1"><Sun className="w-4 h-4 text-amber-500"/> 28°C</span>
-              <span className="flex items-center gap-1"><Wind className="w-4 h-4 text-blue-400"/> 12 km/h</span>
+              <span className="flex items-center gap-1"><Sun className="w-4 h-4 text-amber-500" /> 28°C</span>
+              <span className="flex items-center gap-1"><Wind className="w-4 h-4 text-blue-400" /> 12 km/h</span>
             </div>
             <Avatar className="h-8 w-8 border border-slate-200">
               <AvatarImage src="https://i.pravatar.cc/150?u=a042581f4e29026704d" alt="Agricultor" />
@@ -148,7 +154,7 @@ export default function Dashboard() {
         {/* Dashboard Content */}
         <div className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8">
           <div className="max-w-7xl mx-auto space-y-6">
-            
+
             {activeTab === "overview" && (
               <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -190,18 +196,18 @@ export default function Dashboard() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                   <Card className="glass-panel h-64 overflow-hidden relative cursor-pointer group" onClick={() => setActiveTab("plots")}>
-                      <img src={satelliteFarm} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent p-4 flex flex-col justify-end">
-                        <div className="text-white font-bold flex items-center gap-2"><Layers className="w-4 h-4"/> Mapa de Talhões</div>
-                      </div>
-                   </Card>
-                   <Card className="glass-panel h-64 overflow-hidden relative cursor-pointer group" onClick={() => setActiveTab("health")}>
-                      <img src={soilHeatmap} className="w-full h-full object-cover transition-transform group-hover:scale-105 grayscale" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent p-4 flex flex-col justify-end">
-                        <div className="text-white font-bold flex items-center gap-2"><Activity className="w-4 h-4"/> Saúde por NDVI</div>
-                      </div>
-                   </Card>
+                  <Card className="glass-panel h-64 overflow-hidden relative cursor-pointer group" onClick={() => setActiveTab("plots")}>
+                    <img src={satelliteFarm} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent p-4 flex flex-col justify-end">
+                      <div className="text-white font-bold flex items-center gap-2"><Layers className="w-4 h-4" /> Mapa de Talhões</div>
+                    </div>
+                  </Card>
+                  <Card className="glass-panel h-64 overflow-hidden relative cursor-pointer group" onClick={() => setActiveTab("health")}>
+                    <img src={soilHeatmap} className="w-full h-full object-cover transition-transform group-hover:scale-105 grayscale" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent p-4 flex flex-col justify-end">
+                      <div className="text-white font-bold flex items-center gap-2"><Activity className="w-4 h-4" /> Saúde por NDVI</div>
+                    </div>
+                  </Card>
                 </div>
               </div>
             )}
@@ -261,12 +267,12 @@ export default function Dashboard() {
                       <CardTitle className="text-sm">Mapa de Vigor Vegetativo</CardTitle>
                     </CardHeader>
                     <div className="h-80 relative">
-                       <img src={satelliteFarm} className="w-full h-full object-cover" />
-                       <div className="absolute top-4 right-4 bg-black/80 text-white p-2 rounded text-[10px] space-y-1">
-                          <div className="flex items-center gap-2"><div className="w-2 h-2 bg-green-500 rounded-full"></div> Saudável (0.8+)</div>
-                          <div className="flex items-center gap-2"><div className="w-2 h-2 bg-yellow-500 rounded-full"></div> Atenção (0.5-0.7)</div>
-                          <div className="flex items-center gap-2"><div className="w-2 h-2 bg-red-500 rounded-full"></div> Alerta (&lt;0.4)</div>
-                       </div>
+                      <img src={satelliteFarm} className="w-full h-full object-cover" />
+                      <div className="absolute top-4 right-4 bg-black/80 text-white p-2 rounded text-[10px] space-y-1">
+                        <div className="flex items-center gap-2"><div className="w-2 h-2 bg-green-500 rounded-full"></div> Saudável (0.8+)</div>
+                        <div className="flex items-center gap-2"><div className="w-2 h-2 bg-yellow-500 rounded-full"></div> Atenção (0.5-0.7)</div>
+                        <div className="flex items-center gap-2"><div className="w-2 h-2 bg-red-500 rounded-full"></div> Alerta (&lt;0.4)</div>
+                      </div>
                     </div>
                   </Card>
                   <Card className="glass-panel p-6">
@@ -339,44 +345,98 @@ export default function Dashboard() {
                   <h2 className="text-2xl font-heading font-bold text-slate-900 dark:text-white">Gerenciamento de Talhões</h2>
                   <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
                     <DialogTrigger asChild>
-                      <Button className="gap-2">
+                      <Button className="gap-2 shadow-lg hover:shadow-primary/20 transition-all">
                         <Plus className="w-4 h-4" /> Adicionar Talhão
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-[425px]">
-                      <DialogHeader>
-                        <DialogTitle>Adicionar Novo Talhão</DialogTitle>
-                        <DialogDescription>
-                          Insira os dados da área para iniciar o monitoramento via satélite.
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="grid gap-4 py-4">
-                        <div className="grid grid-cols-4 items-center gap-4">
-                          <Label htmlFor="name" className="text-right">Nome</Label>
-                          <Input id="name" value={newPlot.name} onChange={(e) => setNewPlot({...newPlot, name: e.target.value})} className="col-span-3" placeholder="Ex: Talhão Sul" />
+                    <DialogContent className="sm:max-w-[800px] p-0 overflow-hidden border-0 gap-0">
+                      <div className="flex flex-col md:flex-row h-full max-h-[90vh]">
+                        {/* Map Section */}
+                        <div className="w-full md:w-1/2 h-48 md:h-auto relative bg-slate-200">
+                          <img src={satelliteFarm} className="w-full h-full object-cover" alt="Mapa" />
+                          <div className="absolute inset-0 bg-black/20 hover:bg-transparent transition-colors cursor-crosshair flex items-center justify-center group">
+                            <div className="bg-white/90 backdrop-blur p-2 rounded-lg shadow-xl border border-slate-200 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <span className="text-[10px] font-mono text-slate-800 flex items-center gap-1">
+                                <MapPin className="w-3 h-3 text-primary" /> Definir Ponto no Mapa
+                              </span>
+                            </div>
+                            <div className="absolute bottom-4 left-4 bg-black/60 backdrop-blur text-white p-2 rounded-md text-[10px] space-y-0.5 border border-white/10 uppercase tracking-widest font-bold">
+                              <div>Mapa Híbrido</div>
+                              <div className="text-primary">Camada Satélite Ativa</div>
+                            </div>
+                          </div>
                         </div>
-                        <div className="grid grid-cols-4 items-center gap-4">
-                          <Label htmlFor="crop" className="text-right">Cultura</Label>
-                          <Select value={newPlot.crop} onValueChange={(v) => setNewPlot({...newPlot, crop: v})}>
-                            <SelectTrigger className="col-span-3">
-                              <SelectValue placeholder="Selecione a cultura" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Soja">Soja</SelectItem>
-                              <SelectItem value="Milho">Milho</SelectItem>
-                              <SelectItem value="Algodão">Algodão</SelectItem>
-                              <SelectItem value="Trigo">Trigo</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="grid grid-cols-4 items-center gap-4">
-                          <Label htmlFor="area" className="text-right">Área (ha)</Label>
-                          <Input id="area" type="number" value={newPlot.area} onChange={(e) => setNewPlot({...newPlot, area: e.target.value})} className="col-span-3" placeholder="Ex: 150" />
+
+                        {/* Form Section */}
+                        <div className="w-full md:w-1/2 p-6 flex flex-col bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800">
+                          <DialogHeader className="mb-6">
+                            <DialogTitle className="text-xl font-heading">Novo Mapeamento</DialogTitle>
+                            <DialogDescription>
+                              Insira os detalhes do terreno e as coordenadas geográficas.
+                            </DialogDescription>
+                          </DialogHeader>
+
+                          <div className="space-y-4 flex-1">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label htmlFor="name">Identificação</Label>
+                                <Input id="name" value={newPlot.name} onChange={(e) => setNewPlot({ ...newPlot, name: e.target.value })} placeholder="Ex: Talhão 04" />
+                              </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="crop">Cultura</Label>
+                                <Select value={newPlot.crop} onValueChange={(v) => setNewPlot({ ...newPlot, crop: v })}>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Cultura" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="Soja">Soja</SelectItem>
+                                    <SelectItem value="Milho">Milho</SelectItem>
+                                    <SelectItem value="Algodão">Algodão</SelectItem>
+                                    <SelectItem value="Trigo">Trigo</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label htmlFor="area">Área Total (Equitários)</Label>
+                              <div className="relative">
+                                <Input id="area" type="number" value={newPlot.area} onChange={(e) => setNewPlot({ ...newPlot, area: e.target.value })} placeholder="0.00" />
+                                <span className="absolute right-3 top-2.5 text-xs text-slate-400">ha</span>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label htmlFor="lat">Latitude</Label>
+                                <Input id="lat" value={newPlot.lat} onChange={(e) => setNewPlot({ ...newPlot, lat: e.target.value })} placeholder="-12.3456" />
+                              </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="lng">Longitude</Label>
+                                <Input id="lng" value={newPlot.lng} onChange={(e) => setNewPlot({ ...newPlot, lng: e.target.value })} placeholder="-45.6789" />
+                              </div>
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label htmlFor="altitude">Altitude (Metros)</Label>
+                              <div className="relative">
+                                <Input id="altitude" value={newPlot.altitude} onChange={(e) => setNewPlot({ ...newPlot, altitude: e.target.value })} placeholder="Ex: 520" />
+                                <span className="absolute right-3 top-2.5 text-xs text-slate-400">m</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <DialogFooter className="mt-8">
+                            <Button
+                              onClick={addPlot}
+                              className="w-full flex items-center justify-center gap-2 py-6 text-base"
+                              disabled={!newPlot.name || !newPlot.area || !newPlot.lat || !newPlot.lng}
+                            >
+                              <Layers className="w-4 h-4" /> Registrar com GPS
+                            </Button>
+                          </DialogFooter>
                         </div>
                       </div>
-                      <DialogFooter>
-                        <Button onClick={addPlot} disabled={!newPlot.name || !newPlot.area}>Registrar Talhão</Button>
-                      </DialogFooter>
                     </DialogContent>
                   </Dialog>
                 </div>
@@ -387,9 +447,9 @@ export default function Dashboard() {
                       <div className="h-32 bg-slate-200 relative">
                         <img src={satelliteFarm} className="w-full h-full object-cover opacity-50" />
                         <div className="absolute inset-0 flex items-center justify-center font-bold text-slate-800 text-xl">{plot.name}</div>
-                        <Button 
-                          variant="destructive" 
-                          size="icon" 
+                        <Button
+                          variant="destructive"
+                          size="icon"
                           className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
                           onClick={() => removePlot(plot.id)}
                         >
@@ -409,7 +469,19 @@ export default function Dashboard() {
                           <span className="text-slate-500">Saúde</span>
                           <Badge variant="outline" className="text-primary border-primary/20 bg-primary/5">{plot.health}%</Badge>
                         </div>
-                        <Button variant="outline" size="sm" className="w-full mt-2">Ver Detalhes</Button>
+
+                        <div className="pt-2 mt-2 border-t border-slate-100 dark:border-slate-800">
+                          <div className="flex items-center gap-2 text-[10px] font-mono text-slate-400">
+                            <MapPin className="w-3 h-3" /> {plot.lat}, {plot.lng}
+                          </div>
+                          <div className="flex items-center gap-2 text-[10px] font-mono text-slate-400 mt-0.5">
+                            <Activity className="w-3 h-3" /> Elev: {plot.altitude}m
+                          </div>
+                        </div>
+
+                        <Button variant="outline" size="sm" className="w-full mt-2 group-hover:bg-primary group-hover:text-white transition-colors">
+                          Mapear Terreno
+                        </Button>
                       </CardContent>
                     </Card>
                   ))}
@@ -432,11 +504,11 @@ export default function Dashboard() {
 // Helper Component for Sidebar
 function NavItem({ icon, label, active = false, onClick, isOpen }: { icon: React.ReactNode, label: string, active?: boolean, onClick?: () => void, isOpen: boolean }) {
   return (
-    <button 
+    <button
       onClick={onClick}
       className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors group cursor-pointer
-        ${active 
-          ? 'bg-primary/10 text-primary font-medium' 
+        ${active
+          ? 'bg-primary/10 text-primary font-medium'
           : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200'
         }`}
     >
