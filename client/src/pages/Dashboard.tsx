@@ -3,7 +3,7 @@ import {
   Droplets, Map, Activity, CloudRain, 
   Settings, User, Bell, ChevronRight, Menu, MapPin, 
   ThermometerSun, Sprout, CheckCircle2, AlertTriangle, TrendingUp, Sun, Wind,
-  Cloud, CloudLightning, Waves, Layers
+  Cloud, CloudLightning, Waves, Layers, Plus, Trash2, X
 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
@@ -13,6 +13,11 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "@/hooks/use-toast";
 
 // Assets generated
 import satelliteFarm from "@/assets/images/satellite-farm.png";
@@ -36,9 +41,53 @@ const healthHistoryData = [
   { name: 'Sem 5', ndvi: 0.88 },
 ];
 
+interface Plot {
+  id: number;
+  name: string;
+  crop: string;
+  area: number;
+  health: number;
+}
+
 export default function Dashboard() {
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
+  const [plots, setPlots] = useState<Plot[]>([
+    { id: 1, name: "Talhão 01", crop: "Soja", area: 120, health: 82 },
+    { id: 2, name: "Talhão 02", crop: "Milho", area: 240, health: 84 },
+    { id: 3, name: "Talhão 03", crop: "Algodão", area: 360, health: 86 },
+  ]);
+
+  const [newPlot, setNewPlot] = useState({ name: "", crop: "Soja", area: "" });
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+
+  const addPlot = () => {
+    if (!newPlot.name || !newPlot.area) return;
+    const plot: Plot = {
+      id: Date.now(),
+      name: newPlot.name,
+      crop: newPlot.crop,
+      area: Number(newPlot.area),
+      health: Math.floor(Math.random() * (95 - 75 + 1)) + 75,
+    };
+    setPlots([...plots, plot]);
+    setNewPlot({ name: "", crop: "Soja", area: "" });
+    setIsAddDialogOpen(false);
+    toast({
+      title: "Talhão Adicionado",
+      description: `${plot.name} foi registrado com sucesso via satélite.`,
+    });
+  };
+
+  const removePlot = (id: number) => {
+    const plot = plots.find(p => p.id === id);
+    setPlots(plots.filter(p => p.id !== id));
+    toast({
+      title: "Talhão Removido",
+      description: `${plot?.name} foi removido do monitoramento.`,
+      variant: "destructive",
+    });
+  };
 
   return (
     <div className="flex min-h-screen bg-slate-50 dark:bg-slate-950">
@@ -286,31 +335,89 @@ export default function Dashboard() {
 
             {activeTab === "plots" && (
               <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-                <h2 className="text-2xl font-heading font-bold text-slate-900 dark:text-white">Gerenciamento de Talhões</h2>
+                <div className="flex justify-between items-center">
+                  <h2 className="text-2xl font-heading font-bold text-slate-900 dark:text-white">Gerenciamento de Talhões</h2>
+                  <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button className="gap-2">
+                        <Plus className="w-4 h-4" /> Adicionar Talhão
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[425px]">
+                      <DialogHeader>
+                        <DialogTitle>Adicionar Novo Talhão</DialogTitle>
+                        <DialogDescription>
+                          Insira os dados da área para iniciar o monitoramento via satélite.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                          <Label htmlFor="name" className="text-right">Nome</Label>
+                          <Input id="name" value={newPlot.name} onChange={(e) => setNewPlot({...newPlot, name: e.target.value})} className="col-span-3" placeholder="Ex: Talhão Sul" />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                          <Label htmlFor="crop" className="text-right">Cultura</Label>
+                          <Select value={newPlot.crop} onValueChange={(v) => setNewPlot({...newPlot, crop: v})}>
+                            <SelectTrigger className="col-span-3">
+                              <SelectValue placeholder="Selecione a cultura" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Soja">Soja</SelectItem>
+                              <SelectItem value="Milho">Milho</SelectItem>
+                              <SelectItem value="Algodão">Algodão</SelectItem>
+                              <SelectItem value="Trigo">Trigo</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                          <Label htmlFor="area" className="text-right">Área (ha)</Label>
+                          <Input id="area" type="number" value={newPlot.area} onChange={(e) => setNewPlot({...newPlot, area: e.target.value})} className="col-span-3" placeholder="Ex: 150" />
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button onClick={addPlot} disabled={!newPlot.name || !newPlot.area}>Registrar Talhão</Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {[1, 2, 3].map(i => (
-                    <Card key={i} className="glass-panel overflow-hidden">
+                  {plots.map(plot => (
+                    <Card key={plot.id} className="glass-panel overflow-hidden group relative">
                       <div className="h-32 bg-slate-200 relative">
                         <img src={satelliteFarm} className="w-full h-full object-cover opacity-50" />
-                        <div className="absolute inset-0 flex items-center justify-center font-bold text-slate-800 text-xl">Talhão 0{i}</div>
+                        <div className="absolute inset-0 flex items-center justify-center font-bold text-slate-800 text-xl">{plot.name}</div>
+                        <Button 
+                          variant="destructive" 
+                          size="icon" 
+                          className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
+                          onClick={() => removePlot(plot.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       </div>
                       <CardContent className="p-4 space-y-3">
                         <div className="flex justify-between text-sm">
                           <span className="text-slate-500">Cultura</span>
-                          <span className="font-medium">{i === 1 ? 'Soja' : i === 2 ? 'Milho' : 'Algodão'}</span>
+                          <span className="font-medium">{plot.crop}</span>
                         </div>
                         <div className="flex justify-between text-sm">
                           <span className="text-slate-500">Área</span>
-                          <span className="font-medium">{120 * i} ha</span>
+                          <span className="font-medium">{plot.area} ha</span>
                         </div>
                         <div className="flex justify-between text-sm">
                           <span className="text-slate-500">Saúde</span>
-                          <Badge variant="outline" className="text-primary border-primary/20 bg-primary/5">{80 + i * 2}%</Badge>
+                          <Badge variant="outline" className="text-primary border-primary/20 bg-primary/5">{plot.health}%</Badge>
                         </div>
                         <Button variant="outline" size="sm" className="w-full mt-2">Ver Detalhes</Button>
                       </CardContent>
                     </Card>
                   ))}
+                  {plots.length === 0 && (
+                    <div className="col-span-full py-12 text-center text-slate-500 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
+                      Nenhum talhão registrado. Adicione um para iniciar o monitoramento.
+                    </div>
+                  )}
                 </div>
               </div>
             )}
