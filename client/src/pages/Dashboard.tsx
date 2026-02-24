@@ -9,8 +9,14 @@ import {
   Droplets, Map, Activity, CloudRain,
   Settings, User, Bell, ChevronRight, Menu, MapPin,
   ThermometerSun, Sprout, CheckCircle2, AlertTriangle, TrendingUp, Sun, Wind,
-  Cloud, CloudLightning, Waves, Layers, Plus, Trash2, X
+  Cloud, CloudLightning, Waves, Layers, Plus, Trash2, X, MessageSquare, Send, RefreshCw
 } from "lucide-react";
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 import { MapContainer, TileLayer, Marker, Polygon, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -57,8 +63,11 @@ interface Plot {
   lng: string;
   altitude: string;
   boundaryPoints?: [number, number][];
-  analysis?: string; // Campo novo
+  analysis?: string;
+  chatHistory?: string; // Campo novo para o histórico
 }
+
+// ... rest of the interface ...
 
 // Utility to calculate polygon area in hectares
 const calculateArea = (points: [number, number][]): number => {
@@ -159,6 +168,22 @@ export default function Dashboard() {
       toast({
         title: "Análise Groq Concluída",
         description: "O relatório agronômico foi gerado via IA.",
+      });
+    },
+  });
+
+  const [chatMessage, setChatMessage] = useState("");
+  const chatMutation = useMutation({
+    mutationFn: async ({ id, message }: { id: string; message: string }) => {
+      const res = await apiRequest("POST", `/api/plots/${id}/chat`, { message });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/plots"] });
+      setChatMessage("");
+      toast({
+        title: "IA Respondeu",
+        description: "Nova mensagem técnica disponível.",
       });
     },
   });
@@ -619,18 +644,75 @@ export default function Dashboard() {
                             )}
 
                             {dbPlots.find(p => p.name === newPlot.name && p.lat === newPlot.lat) && (
-                              <Button
-                                onClick={() => {
-                                  const p = dbPlots.find(idx => idx.name === newPlot.name);
-                                  if (p) analyzeMutation.mutate(p.id);
-                                }}
-                                variant="outline"
-                                className="w-full gap-2 text-xs border-primary/30 text-primary hover:bg-primary/10"
-                                disabled={analyzeMutation.isPending}
-                              >
-                                {analyzeMutation.isPending ? <Activity className="w-3 h-3 animate-spin" /> : <Sprout className="w-3 h-3" />}
-                                {newPlot.analysis ? "Recalcular Análise IA" : "Solicitar Análise Groq AI"}
-                              </Button>
+                              <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800">
+                                <h4 className="text-xs font-bold text-slate-500 uppercase flex items-center gap-2">
+                                  <MessageSquare className="w-3 h-3" /> Chat Agrosatelite IA
+                                </h4>
+
+                                <div className="max-h-[200px] overflow-y-auto space-y-3 p-3 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800">
+                                  {plots.find(p => p.name === newPlot.name)?.chatHistory ? (
+                                    JSON.parse(plots.find(p => p.name === newPlot.name)!.chatHistory!).map((m: any, idx: number) => (
+                                      <div key={idx} className={cn(
+                                        "p-2 rounded-lg text-[11px] max-w-[90%]",
+                                        m.role === "user" ? "bg-primary/10 ml-auto text-primary-dark" : "bg-white dark:bg-slate-800 shadow-sm border border-slate-100"
+                                      )}>
+                                        <span className="font-bold block mb-1 opacity-50 uppercase text-[9px]">
+                                          {m.role === "user" ? "Produtor" : "AgriSat IA"}
+                                        </span>
+                                        {m.content}
+                                      </div>
+                                    ))
+                                  ) : (
+                                    <p className="text-[10px] text-slate-400 text-center py-4 italic">
+                                      Inicie uma conversa técnica sobre este talhão...
+                                    </p>
+                                  )}
+                                  {chatMutation.isPending && (
+                                    <div className="bg-white dark:bg-slate-800 p-2 rounded-lg text-[11px] max-w-[90%] shadow-sm border border-slate-100 animate-pulse">
+                                      Digitando...
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div className="flex gap-2">
+                                  <Input
+                                    placeholder="Pergunte sobre o solo, clima ou plantio..."
+                                    className="text-xs h-9"
+                                    value={chatMessage}
+                                    onChange={(e) => setChatMessage(e.target.value)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter" && chatMessage) {
+                                        const p = dbPlots.find(idx => idx.name === newPlot.name);
+                                        if (p) chatMutation.mutate({ id: p.id, message: chatMessage });
+                                      }
+                                    }}
+                                  />
+                                  <Button
+                                    size="icon"
+                                    className="h-9 w-9 shrink-0"
+                                    disabled={!chatMessage || chatMutation.isPending}
+                                    onClick={() => {
+                                      const p = dbPlots.find(idx => idx.name === newPlot.name);
+                                      if (p) chatMutation.mutate({ id: p.id, message: chatMessage });
+                                    }}
+                                  >
+                                    <Send className="w-4 h-4" />
+                                  </Button>
+                                </div>
+
+                                <Button
+                                  onClick={() => {
+                                    const p = dbPlots.find(idx => idx.name === newPlot.name);
+                                    if (p) analyzeMutation.mutate(p.id);
+                                  }}
+                                  variant="ghost"
+                                  className="w-full gap-2 text-[10px] text-slate-400 hover:text-primary"
+                                  disabled={analyzeMutation.isPending}
+                                >
+                                  {analyzeMutation.isPending ? <Activity className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                                  Atualizar Análise Base
+                                </Button>
+                              </div>
                             )}
                           </div>
 

@@ -69,5 +69,62 @@ export async function registerRoutes(
     }
   });
 
+  // Plot-specific Chat Route
+  app.post("/api/plots/:id/chat", async (req, res) => {
+    try {
+      const { message } = req.body;
+      const plot = await storage.getPlot(req.params.id);
+      if (!plot) return res.status(404).json({ message: "Talhão não encontrado" });
+
+      const history = plot.chatHistory ? JSON.parse(plot.chatHistory) : [];
+
+      const systemContext = `Você é um assistente agronômico inteligente da plataforma AgriSat. 
+      Você está analisando o talhão "${plot.name}".
+      DADOS TÉCNICOS VISUAIS:
+      - Cultura: ${plot.crop}
+      - Localização: ${plot.lat}, ${plot.lng} (Angola)
+      - Altitude: ${plot.altitude}m
+      - Área: ${plot.area}ha
+      - Limites (Polígono): ${plot.boundaryPoints}
+      
+      Use esses dados para "visualizar" o terreno e responder dúvidas técnicas do produtor. 
+      Lembre-se do contexto anterior da conversa. Seja prestativo e técnico.`;
+
+      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model: "llama-3.3-70b-versatile",
+          messages: [
+            { role: "system", content: systemContext },
+            ...history,
+            { role: "user", content: message }
+          ],
+          temperature: 0.7
+        })
+      });
+
+      const data = await response.json();
+      const aiResponse = data.choices[0].message.content;
+
+      // Update history
+      const newHistory = [
+        ...history,
+        { role: "user", content: message },
+        { role: "assistant", content: aiResponse }
+      ];
+
+      const updatedPlot = await storage.updatePlotChatHistory(plot.id, JSON.stringify(newHistory));
+      res.json({ response: aiResponse, plot: updatedPlot });
+
+    } catch (error) {
+      console.error("Erro no chat IA:", error);
+      res.status(500).json({ message: "Erro ao processar conversa com IA" });
+    }
+  });
+
   return httpServer;
 }

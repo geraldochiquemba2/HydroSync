@@ -15,6 +15,7 @@ export interface IStorage {
   getPlot(id: string): Promise<Plot | undefined>;
   createPlot(plot: InsertPlot): Promise<Plot>;
   updatePlotAnalysis(id: string, analysis: string): Promise<Plot>;
+  updatePlotChatHistory(id: string, history: string): Promise<Plot>;
   deletePlot(id: string): Promise<void>;
 }
 
@@ -51,6 +52,14 @@ export class DatabaseStorage implements IStorage {
   async updatePlotAnalysis(id: string, analysis: string): Promise<Plot> {
     const [plot] = await db.update(plots)
       .set({ analysis })
+      .where(eq(plots.id, id))
+      .returning();
+    return plot;
+  }
+
+  async updatePlotChatHistory(id: string, chatHistory: string): Promise<Plot> {
+    const [plot] = await db.update(plots)
+      .set({ chatHistory })
       .where(eq(plots.id, id))
       .returning();
     return plot;

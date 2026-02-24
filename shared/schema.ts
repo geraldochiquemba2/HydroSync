@@ -20,6 +20,7 @@ export const plots = pgTable("plots", {
   altitude: text("altitude").notNull(),
   boundaryPoints: text("boundary_points"), // Almazena como JSON string
   analysis: text("analysis"), // Resultado da análise Groq AI
+  chatHistory: text("chat_history"), // JSON array de mensagens do chat
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
