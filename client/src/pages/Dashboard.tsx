@@ -8,7 +8,8 @@ import React, { useState, useEffect } from "react";
 import {
   Droplets, Map, Activity, CloudRain,
   Settings, User, Bell, ChevronRight, Menu, MapPin,
-  Cloud, CloudLightning, Waves, Layers, Plus, Trash2, X, MessageSquare, Send, RefreshCw, CloudSun, Loader2
+  Cloud, CloudLightning, Waves, Layers, Plus, Trash2, X, MessageSquare, Send, RefreshCw, CloudSun, Loader2,
+  Sprout, Sun, Wind, ThermometerSun, AlertTriangle
 } from "lucide-react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
@@ -265,7 +266,7 @@ export default function Dashboard() {
     createPlotMutation.mutate(insertData);
   };
 
-  const viewOnMap = (plot: Plot) => {
+  const viewOnMap = (plot: DbPlot) => {
     setIsSwitchingPlot(true);
     setNewPlot({
       name: plot.name,
@@ -276,9 +277,14 @@ export default function Dashboard() {
       altitude: plot.altitude,
       analysis: plot.analysis || ""
     });
-    // ... resto ...
+
     if (plot.boundaryPoints) {
-      setPolygonPoints(JSON.parse(plot.boundaryPoints));
+      try {
+        setPolygonPoints(JSON.parse(plot.boundaryPoints));
+      } catch (e) {
+        console.error("Erro ao processar geometria do talhão:", e);
+        setPolygonPoints([]);
+      }
     } else {
       setPolygonPoints([]);
     }
