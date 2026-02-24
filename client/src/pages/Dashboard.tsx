@@ -138,18 +138,26 @@ export default function Dashboard() {
   const createPlotMutation = useMutation({
     mutationFn: async (plot: InsertPlot) => {
       const res = await apiRequest("POST", "/api/plots", plot);
+      if (!res.ok) throw new Error(await res.text());
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/plots"] });
-      setNewPlot({ name: "", crop: "Soja", area: "", lat: "", lng: "", altitude: "" });
+      setNewPlot({ name: "", crop: "Soja", area: "", lat: "", lng: "", altitude: "", analysis: "" });
       setPolygonPoints([]);
       setIsAddDialogOpen(false);
       toast({
-        title: "Área Salva no Neon",
-        description: "Os dados foram persistidos com sucesso no banco de dados.",
+        title: "Sucesso!",
+        description: "Talhão registrado com telemetria.",
       });
     },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro ao registrar",
+        description: error.message || "Verifique os dados e tente novamente.",
+        variant: "destructive"
+      });
+    }
   });
 
   const deletePlotMutation = useMutation({
@@ -193,6 +201,25 @@ export default function Dashboard() {
         description: "Nova mensagem técnica disponível.",
       });
     },
+    onError: () => {
+      toast({
+        title: "Erro no Chat",
+        description: "A IA não conseguiu responder no momento.",
+        variant: "destructive"
+      });
+    }
+  });
+
+  const [telemetry, setTelemetry] = useState<any>(null);
+  const { data: liveTelemetry } = useQuery({
+    queryKey: ["/api/plots/telemetry", newPlot.name], // Use name as trigger for simplicity in this dialog
+    queryFn: async () => {
+      if (!newPlot.lat || !newPlot.lng) return null;
+      const res = await apiRequest("GET", `/api/plots/fake-id/telemetry?lat=${newPlot.lat}&lng=${newPlot.lng}`);
+      return res.json();
+    },
+    enabled: isAddDialogOpen && !!newPlot.lat,
+    refetchInterval: 10000 // Refresh a cada 10s para simular alta frequência
   });
 
   const [newPlot, setNewPlot] = useState({ name: "", crop: "Soja", area: "", lat: "", lng: "", altitude: "", analysis: "" });
@@ -641,6 +668,21 @@ export default function Dashboard() {
                                 <span className="absolute right-3 top-2.5 text-xs text-slate-400">m</span>
                               </div>
                             </div>
+
+                            {liveTelemetry && (
+                              <div className="grid grid-cols-2 gap-2 py-2">
+                                <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-100 dark:border-blue-800">
+                                  <div className="text-[10px] text-blue-600 uppercase font-bold">Solo (V-Sensor)</div>
+                                  <div className="text-lg font-bold text-blue-900 dark:text-blue-100">{liveTelemetry.soil.moisture}%</div>
+                                  <div className="text-[9px] text-blue-500">{liveTelemetry.soil.status}</div>
+                                </div>
+                                <div className="p-2 bg-amber-50 dark:bg-amber-900/20 rounded border border-amber-100 dark:border-amber-800">
+                                  <div className="text-[10px] text-amber-600 uppercase font-bold">Clima (Live)</div>
+                                  <div className="text-lg font-bold text-amber-900 dark:text-amber-100">{liveTelemetry.weather.temp}°C</div>
+                                  <div className="text-[9px] text-amber-500">{liveTelemetry.weather.description}</div>
+                                </div>
+                              </div>
+                            )}
 
                             {newPlot.analysis && (
                               <div className="p-4 bg-primary/5 rounded-lg border border-primary/20 space-y-2">

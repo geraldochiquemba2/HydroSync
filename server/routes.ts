@@ -1,6 +1,8 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { getPlotWeather } from "./services/weatherService";
+import { estimateSoilTelemetry } from "./services/soilSimulationService";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -25,25 +27,64 @@ export async function registerRoutes(
     res.status(204).end();
   });
 
+  // Telemetry Route
+  app.get("/api/plots/:id/telemetry", async (req, res) => {
+    try {
+      let lat = req.query.lat as string;
+      let lng = req.query.lng as string;
+
+      if (req.params.id !== "fake-id") {
+        const plot = await storage.getPlot(req.params.id);
+        if (plot) {
+          lat = plot.lat;
+          lng = plot.lng;
+        }
+      }
+
+      if (!lat || !lng) return res.status(400).json({ message: "Coordenadas necessárias" });
+
+      const weather = await getPlotWeather(lat, lng);
+      const soil = estimateSoilTelemetry(weather);
+
+      res.json({
+        weather,
+        soil,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Erro ao obter telemetria" });
+    }
+  });
+
   // AI Analysis Route with Groq
   app.post("/api/plots/:id/analyze", async (req, res) => {
     try {
       const plot = await storage.getPlot(req.params.id);
       if (!plot) return res.status(404).json({ message: "Talhão não encontrado" });
 
+      const weather = await getPlotWeather(plot.lat, plot.lng);
+      const soil = estimateSoilTelemetry(weather);
+
       const prompt = `Você é um engenheiro agrônomo especialista em solos de Angola. 
-      Analise o seguinte talhão:
+      Analise o seguinte talhão com dados de TELEMETRIA EM TEMPO REAL:
       - Nome: ${plot.name}
       - Cultura: ${plot.crop}
       - Área: ${plot.area} hectares
-      - Coordenadas: ${plot.lat}, ${plot.lng}
-      - Altitude: ${plot.altitude} metros
+      - Localização: ${plot.lat}, ${plot.lng} (Altitude: ${plot.altitude}m)
+      
+      CONDIÇÕES ATUAIS (Sensores Virtuais):
+      - Temperatura Ar: ${weather.temp}°C
+      - Humidade Ar: ${weather.humidity}%
+      - Vento: ${weather.windSpeed}km/h
+      - Chuva (1h): ${weather.rain}mm
+      - Humidade do Solo: ${soil.moisture}% (Status: ${soil.status})
+      - Evapotranspiração: ${soil.evapotranspiration}mm/h
 
       Forneça um relatório técnico curto e direto (em português de Angola) contendo:
-      1. Viabilidade da cultura (${plot.crop}) para esta altitude e localização.
-      2. Recomendações de adubação e correção de solo.
-      3. Sugestão de ciclo de plantio ideal.
-      Seja muito profissional e técnico.`;
+      1. Avaliação do estresse hídrico e necessidade imediata de irrigação.
+      2. Impacto das condições climáticas atuais na cultura (${plot.crop}).
+      3. Recomendações de manejo para as próximas 24h.
+      Seja muito profissional, técnico e use os dados de telemetria para justificar sua análise.`;
 
       const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
@@ -78,17 +119,23 @@ export async function registerRoutes(
 
       const history = plot.chatHistory ? JSON.parse(plot.chatHistory) : [];
 
-      const systemContext = `Você é um assistente agronômico inteligente da plataforma AgriSat. 
-      Você está analisando o talhão "${plot.name}".
-      DADOS TÉCNICOS VISUAIS:
-      - Cultura: ${plot.crop}
-      - Localização: ${plot.lat}, ${plot.lng} (Angola)
-      - Altitude: ${plot.altitude}m
-      - Área: ${plot.area}ha
-      - Limites (Polígono): ${plot.boundaryPoints}
+      const weather = await getPlotWeather(plot.lat, plot.lng);
+      const soil = estimateSoilTelemetry(weather);
+
+      const systemContext = `Você é um assistente de IA agrícola integrado ao sistema AgriSat. 
+      Você está analisando o talhão "${plot.name}" (${plot.crop}).
       
-      Use esses dados para "visualizar" o terreno e responder dúvidas técnicas do produtor. 
-      Lembre-se do contexto anterior da conversa. Seja prestativo e técnico.`;
+      DADOS TÉCNICOS:
+      - Área: ${plot.area}ha
+      - Telemetria de GPS: ${plot.lat}, ${plot.lng} (Alt: ${plot.altitude}m)
+      - Fronteiras (Polígono): ${plot.boundaryPoints}
+      
+      TELEMETRIA EM TEMPO REAL (AGORA):
+      - Temp: ${weather.temp}°C | Humidade: ${weather.humidity}%
+      - Solo: ${soil.moisture}% (${soil.status}) | Evap: ${soil.evapotranspiration}mm/h
+      - Vento: ${weather.windSpeed}km/h | Chuva: ${weather.rain}mm
+      
+      Responda em Português de Angola. Seja técnico e use os dados acima para responder às dúvidas do agricultor.`;
 
       const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
