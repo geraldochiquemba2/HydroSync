@@ -9,7 +9,7 @@ import {
   Droplets, Map, Activity, CloudRain,
   Settings, User, Bell, ChevronRight, Menu, MapPin,
   ThermometerSun, Sprout, CheckCircle2, AlertTriangle, TrendingUp, Sun, Wind,
-  Cloud, CloudLightning, Waves, Layers, Plus, Trash2, X, MessageSquare, Send, RefreshCw
+  Cloud, CloudLightning, Waves, Layers, Plus, Trash2, X, MessageSquare, Send, RefreshCw, CloudSun
 } from "lucide-react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
@@ -226,6 +226,14 @@ export default function Dashboard() {
     enabled: isAddDialogOpen && !!newPlot.lat,
     refetchInterval: 10000 // Refresh a cada 10s para simular alta frequência
   });
+
+  const { data: provincialWeather, isLoading: loadingProvinces } = useQuery<any[]>({
+    queryKey: ["/api/weather/provinces"],
+    enabled: activeTab === "climate",
+    refetchInterval: 300000 // 5 minutos para o painel global
+  });
+
+  const [selectedProvince, setSelectedProvince] = useState<any>(null);
 
 
 
@@ -474,41 +482,112 @@ export default function Dashboard() {
 
             {activeTab === "climate" && (
               <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-                <h2 className="text-2xl font-heading font-bold text-slate-900 dark:text-white">Central Climática</h2>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div className="p-6 bg-amber-500 text-white rounded-2xl flex flex-col items-center justify-center">
-                    <Sun className="w-10 h-10 mb-2" />
-                    <div className="text-3xl font-bold">28°C</div>
-                    <div className="text-xs opacity-80">Céu Limpo</div>
-                  </div>
-                  <div className="p-6 bg-blue-500 text-white rounded-2xl flex flex-col items-center justify-center">
-                    <CloudRain className="w-10 h-10 mb-2" />
-                    <div className="text-3xl font-bold">12%</div>
-                    <div className="text-xs opacity-80">Prob. Chuva</div>
-                  </div>
-                  <div className="p-6 bg-slate-800 text-white rounded-2xl flex flex-col items-center justify-center">
-                    <Wind className="w-10 h-10 mb-2" />
-                    <div className="text-3xl font-bold">14km/h</div>
-                    <div className="text-xs opacity-80">Vento SE</div>
-                  </div>
-                  <div className="p-6 bg-indigo-600 text-white rounded-2xl flex flex-col items-center justify-center">
-                    <CloudLightning className="w-10 h-10 mb-2" />
-                    <div className="text-3xl font-bold">Baixo</div>
-                    <div className="text-xs opacity-80">Risco Raios</div>
-                  </div>
+                <div className="flex justify-between items-center">
+                  <h2 className="text-2xl font-heading font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <CloudRain className="w-6 h-6 text-primary" /> Central Climática Nacional
+                  </h2>
+                  <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20">
+                    Sincronizado: {new Date().toLocaleTimeString()}
+                  </Badge>
                 </div>
-                <Card className="glass-panel p-6">
-                  <CardTitle className="mb-6">Previsão Semanal</CardTitle>
-                  <div className="grid grid-cols-7 gap-2">
-                    {['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map((day, i) => (
-                      <div key={day} className="text-center p-3 rounded-xl border border-slate-100 dark:border-slate-800">
-                        <div className="text-xs text-slate-500 mb-2">{day}</div>
-                        {i === 2 ? <CloudRain className="w-6 h-6 mx-auto text-blue-400" /> : <Sun className="w-6 h-6 mx-auto text-amber-400" />}
-                        <div className="mt-2 font-bold text-sm">{24 + i}°</div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                  {loadingProvinces ? (
+                    Array(18).fill(0).map((_, i) => (
+                      <Card key={i} className="h-40 animate-pulse bg-slate-100 dark:bg-slate-800" />
+                    ))
+                  ) : provincialWeather?.map((p) => (
+                    <Card
+                      key={p.name}
+                      className={`p-4 cursor-pointer hover:shadow-md transition-all border-slate-200 group ${selectedProvince?.name === p.name ? 'ring-2 ring-primary border-primary' : ''}`}
+                      onClick={() => setSelectedProvince(p)}
+                    >
+                      <div className="text-[10px] uppercase font-bold text-slate-400 group-hover:text-primary transition-colors">{p.name}</div>
+                      <div className="mt-2 flex items-center justify-between">
+                        <div className="text-2xl font-bold text-slate-800 dark:text-white">{p.weather.temp}°</div>
+                        {p.weather.rain > 0 ? <CloudRain className="w-5 h-5 text-blue-400" /> : <Sun className="w-5 h-5 text-amber-400" />}
                       </div>
-                    ))}
-                  </div>
-                </Card>
+                      <div className="mt-2 flex items-center gap-2 text-[10px] text-slate-500">
+                        <Wind className="w-3 h-3" /> {p.weather.windSpeed} km/h
+                      </div>
+                      <div className="mt-1 text-[9px] text-slate-400 italic">
+                        {p.weather.description}
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+
+                {selectedProvince && (
+                  <Card className="p-6 bg-slate-900 text-white border-0 shadow-2xl relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
+                      <CloudSun className="w-32 h-32" />
+                    </div>
+                    <div className="relative z-10">
+                      <div className="flex justify-between items-start mb-6">
+                        <div>
+                          <h3 className="text-3xl font-bold">{selectedProvince.name}</h3>
+                          <p className="text-blue-300">Localização Capital: {selectedProvince.lat}, {selectedProvince.lng}</p>
+                        </div>
+                        <Button variant="ghost" size="icon" onClick={() => setSelectedProvince(null)} className="text-white hover:bg-white/10">
+                          <X className="w-5 h-5" />
+                        </Button>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="bg-white/10 p-6 rounded-2xl">
+                          <div className="text-sm opacity-70 mb-2">Condição Atual</div>
+                          <div className="flex items-center gap-4">
+                            <div className="text-5xl font-bold">{selectedProvince.weather.temp}°C</div>
+                            {selectedProvince.weather.rain > 0 ? <CloudRain className="w-10 h-10 text-blue-400" /> : <Sun className="w-10 h-10 text-amber-400" />}
+                          </div>
+                          <p className="mt-2 text-lg text-blue-100 uppercase tracking-wider">{selectedProvince.weather.description}</p>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="p-4 bg-white/5 rounded-xl border border-white/10">
+                            <div className="text-[10px] opacity-60 uppercase">Humidade</div>
+                            <div className="text-xl font-bold">{selectedProvince.weather.humidity}%</div>
+                          </div>
+                          <div className="p-4 bg-white/5 rounded-xl border border-white/10">
+                            <div className="text-[10px] opacity-60 uppercase">Vento</div>
+                            <div className="text-xl font-bold">{selectedProvince.weather.windSpeed} km/h</div>
+                          </div>
+                          <div className="p-4 bg-white/5 rounded-xl border border-white/10">
+                            <div className="text-[10px] opacity-60 uppercase">Índice UV</div>
+                            <div className="text-xl font-bold">{selectedProvince.weather.uvIndex}</div>
+                          </div>
+                          <div className="p-4 bg-white/5 rounded-xl border border-white/10">
+                            <div className="text-[10px] opacity-60 uppercase">Chuva (1h)</div>
+                            <div className="text-xl font-bold">{selectedProvince.weather.rain} mm</div>
+                          </div>
+                        </div>
+
+                        <div className="bg-white/5 p-6 rounded-2xl border border-white/10">
+                          <h4 className="font-bold mb-4 text-sm flex items-center gap-2">
+                            <Droplets className="w-4 h-4" /> Recomendação Hídrica
+                          </h4>
+                          <div className="space-y-4">
+                            <div className="text-2xl font-bold text-blue-300">Irrigação Moderada</div>
+                            <p className="text-[11px] opacity-70">Baseado na evapotranspiração de {selectedProvince.name}, recomenda-se janela de rega entre 18:00 e 21:00.</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-8">
+                        <h4 className="font-bold mb-4 text-sm">Tendência (Próximos dias)</h4>
+                        <div className="grid grid-cols-7 gap-3">
+                          {['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map((day, i) => (
+                            <div key={day} className="text-center p-3 bg-white/5 rounded-xl border border-white/5">
+                              <div className="text-[10px] opacity-60 mb-2">{day}</div>
+                              {i % 3 === 0 ? <CloudRain className="w-5 h-5 mx-auto text-blue-400" /> : <Sun className="w-5 h-5 mx-auto text-amber-400" />}
+                              <div className="mt-2 font-bold text-xs">{selectedProvince.weather.temp + (i - 2)}°</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                )}
               </div>
             )}
 

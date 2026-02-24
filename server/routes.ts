@@ -173,5 +173,42 @@ export async function registerRoutes(
     }
   });
 
+  // Provincial Weather Route
+  app.get("/api/weather/provinces", async (_req, res) => {
+    try {
+      const provinces = [
+        { name: "Bengo", lat: "-8.6", lng: "13.6" },
+        { name: "Benguela", lat: "-12.58", lng: "13.4" },
+        { name: "Bié", lat: "-12.38", lng: "16.94" },
+        { name: "Cabinda", lat: "-5.55", lng: "12.2" },
+        { name: "Cuando Cubango", lat: "-14.65", lng: "17.68" },
+        { name: "Cuanza Norte", lat: "-9.3", lng: "14.9" },
+        { name: "Cuanza Sul", lat: "-11.17", lng: "13.84" },
+        { name: "Cunene", lat: "-17.07", lng: "15.74" },
+        { name: "Huambo", lat: "-12.77", lng: "15.73" },
+        { name: "Huíla", lat: "-14.92", lng: "13.5" },
+        { name: "Luanda", lat: "-8.84", lng: "13.23" },
+        { name: "Lunda Norte", lat: "-8.41", lng: "20.91" },
+        { name: "Lunda Sul", lat: "-9.66", lng: "20.39" },
+        { name: "Malanje", lat: "-9.54", lng: "16.34" },
+        { name: "Moxico", lat: "-11.78", lng: "19.91" },
+        { name: "Namibe", lat: "-15.2", lng: "12.15" },
+        { name: "Uíge", lat: "-7.61", lng: "15.05" },
+        { name: "Zaire", lat: "-6.27", lng: "14.24" }
+      ];
+
+      // Fetch all weather data in parallel
+      const results = await Promise.all(provinces.map(async (p) => {
+        const weather = await getPlotWeather(p.lat, p.lng);
+        return { ...p, weather };
+      }));
+
+      res.json(results);
+    } catch (error) {
+      console.error("Erro ao buscar clima provincial:", error);
+      res.status(500).json({ message: "Erro ao carregar dados das províncias" });
+    }
+  });
+
   return httpServer;
 }
