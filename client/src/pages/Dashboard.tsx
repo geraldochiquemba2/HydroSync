@@ -4,7 +4,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Plot as DbPlot, InsertPlot } from "@shared/schema";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Droplets, Map, Activity, CloudRain,
   Settings, User, Bell, ChevronRight, Menu, MapPin,
@@ -124,6 +124,11 @@ export default function Dashboard() {
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
 
+  const [newPlot, setNewPlot] = useState({ name: "", crop: "Soja", area: "", lat: "", lng: "", altitude: "", analysis: "" });
+  const [polygonPoints, setPolygonPoints] = useState<[number, number][]>([]);
+  const [mapFocus, setMapFocus] = useState<{ center: [number, number], zoom: number }>({ center: [-11.2027, 17.8739], zoom: 6 });
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+
   const { data: dbPlots = [], isLoading } = useQuery<DbPlot[]>({
     queryKey: ["/api/plots"],
   });
@@ -222,10 +227,7 @@ export default function Dashboard() {
     refetchInterval: 10000 // Refresh a cada 10s para simular alta frequência
   });
 
-  const [newPlot, setNewPlot] = useState({ name: "", crop: "Soja", area: "", lat: "", lng: "", altitude: "", analysis: "" });
-  const [polygonPoints, setPolygonPoints] = useState<[number, number][]>([]);
-  const [mapFocus, setMapFocus] = useState<{ center: [number, number], zoom: number }>({ center: [-11.2027, 17.8739], zoom: 6 });
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+
 
   const addPlot = () => {
     if (!newPlot.name || !newPlot.lat || !newPlot.lng) return;
