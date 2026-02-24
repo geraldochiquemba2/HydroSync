@@ -9,8 +9,21 @@ export async function registerRoutes(
   // put application routes here
   // prefix all routes with /api
 
-  // use storage to perform CRUD operations on the storage interface
-  // e.g. storage.insertUser(user) or storage.getUserByUsername(username)
+  // API Routes for Plots
+  app.get("/api/plots", async (_req, res) => {
+    const plots = await storage.getPlots();
+    res.json(plots);
+  });
+
+  app.post("/api/plots", async (req, res) => {
+    const plot = await storage.createPlot(req.body);
+    res.json(plot);
+  });
+
+  app.delete("/api/plots/:id", async (req, res) => {
+    await storage.deletePlot(req.params.id);
+    res.status(204).end();
+  });
 
   return httpServer;
 }

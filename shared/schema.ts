@@ -9,10 +9,28 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
 });
 
+export const plots = pgTable("plots", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  crop: text("crop").notNull(),
+  area: text("area").notNull(),
+  health: text("health").notNull(),
+  lat: text("lat").notNull(),
+  lng: text("lng").notNull(),
+  altitude: text("altitude").notNull(),
+  boundaryPoints: text("boundary_points"), // Almazena como JSON string
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
 });
 
+export const insertPlotSchema = createInsertSchema(plots).omit({
+  id: true,
+});
+
+export type InsertPlot = z.infer<typeof insertPlotSchema>;
+export type Plot = typeof plots.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;

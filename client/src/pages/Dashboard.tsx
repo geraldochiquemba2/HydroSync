@@ -1,3 +1,9 @@
+import { Select, SelectContent, SelectItem, SelectValue, SelectTrigger } from "@/components/ui/select";
+import { toast } from "@/hooks/use-toast";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { Plot as DbPlot, InsertPlot } from "@shared/schema";
+
 import { useState } from "react";
 import {
   Droplets, Map, Activity, CloudRain,
@@ -19,8 +25,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { toast } from "@/hooks/use-toast";
 
 // Assets generated
 import satelliteFarm from "@/assets/images/satellite-farm.png";
@@ -44,7 +48,7 @@ const healthHistoryData = [
   { name: 'Sem 5', ndvi: 0.88 },
 ];
 interface Plot {
-  id: number;
+  id: string; // Mudado de number para string (UUID)
   name: string;
   crop: string;
   area: number;
@@ -102,11 +106,47 @@ function MapController({ center, zoom }: { center: [number, number], zoom: numbe
 export default function Dashboard() {
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
-  const [plots, setPlots] = useState<Plot[]>([
-    { id: 1, name: "Talhão 01", crop: "Soja", area: 120, health: 82, lat: "-12.4567", lng: "-45.8901", altitude: "450" },
-    { id: 2, name: "Talhão 02", crop: "Milho", area: 240, health: 84, lat: "-12.4580", lng: "-45.8920", altitude: "455" },
-    { id: 3, name: "Talhão 03", crop: "Algodão", area: 360, health: 86, lat: "-12.4600", lng: "-45.8950", altitude: "460" },
-  ]);
+
+  const { data: dbPlots = [], isLoading } = useQuery<DbPlot[]>({
+    queryKey: ["/api/plots"],
+  });
+
+  const plots: Plot[] = dbPlots.map((p: any) => ({
+    ...p,
+    area: Number(p.area),
+    health: Number(p.health),
+    boundaryPoints: p.boundaryPoints ? JSON.parse(p.boundaryPoints) : undefined
+  }));
+
+  const createPlotMutation = useMutation({
+    mutationFn: async (plot: InsertPlot) => {
+      const res = await apiRequest("POST", "/api/plots", plot);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/plots"] });
+      setNewPlot({ name: "", crop: "Soja", area: "", lat: "", lng: "", altitude: "" });
+      setPolygonPoints([]);
+      setIsAddDialogOpen(false);
+      toast({
+        title: "Área Salva no Neon",
+        description: "Os dados foram persistidos com sucesso no banco de dados.",
+      });
+    },
+  });
+
+  const deletePlotMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/plots/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/plots"] });
+      toast({
+        title: "Talhão Removido",
+        description: "O registro foi excluído permanentemente.",
+      });
+    },
+  });
 
   const [newPlot, setNewPlot] = useState({ name: "", crop: "Soja", area: "", lat: "", lng: "", altitude: "" });
   const [polygonPoints, setPolygonPoints] = useState<[number, number][]>([]);
@@ -115,25 +155,19 @@ export default function Dashboard() {
 
   const addPlot = () => {
     if (!newPlot.name || !newPlot.lat || !newPlot.lng) return;
-    const plot: Plot = {
-      id: Date.now(),
+
+    const insertData: InsertPlot = {
       name: newPlot.name,
       crop: newPlot.crop,
-      area: Number(newPlot.area),
-      health: Math.floor(Math.random() * (95 - 75 + 1)) + 75,
+      area: newPlot.area,
+      health: (Math.floor(Math.random() * (95 - 75 + 1)) + 75).toString(),
       lat: newPlot.lat,
       lng: newPlot.lng,
       altitude: newPlot.altitude || "0",
-      boundaryPoints: polygonPoints.length >= 3 ? polygonPoints : undefined
+      boundaryPoints: polygonPoints.length >= 3 ? JSON.stringify(polygonPoints) : null
     };
-    setPlots([...plots, plot]);
-    setNewPlot({ name: "", crop: "Soja", area: "", lat: "", lng: "", altitude: "" });
-    setPolygonPoints([]);
-    setIsAddDialogOpen(false);
-    toast({
-      title: "Área Delimitada",
-      description: `${plot.name} registrado com ${polygonPoints.length} pontos de limite e ${plot.area}ha.`,
-    });
+
+    createPlotMutation.mutate(insertData);
   };
 
   const viewOnMap = (plot: Plot) => {
@@ -154,14 +188,8 @@ export default function Dashboard() {
     setIsAddDialogOpen(true);
   };
 
-  const removePlot = (id: number) => {
-    const plot = plots.find(p => p.id === id);
-    setPlots(plots.filter(p => p.id !== id));
-    toast({
-      title: "Talhão Removido",
-      description: `${plot?.name} foi removido do monitoramento.`,
-      variant: "destructive",
-    });
+  const removePlot = (id: string) => {
+    deletePlotMutation.mutate(id);
   };
 
   return (
