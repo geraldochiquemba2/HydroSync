@@ -8,8 +8,7 @@ import React, { useState, useEffect } from "react";
 import {
   Droplets, Map, Activity, CloudRain,
   Settings, User, Bell, ChevronRight, Menu, MapPin,
-  ThermometerSun, Sprout, CheckCircle2, AlertTriangle, TrendingUp, Sun, Wind,
-  Cloud, CloudLightning, Waves, Layers, Plus, Trash2, X, MessageSquare, Send, RefreshCw, CloudSun
+  Cloud, CloudLightning, Waves, Layers, Plus, Trash2, X, MessageSquare, Send, RefreshCw, CloudSun, Loader2
 } from "lucide-react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
@@ -234,6 +233,17 @@ export default function Dashboard() {
   });
 
   const [selectedProvince, setSelectedProvince] = useState<any>(null);
+  const [isSwitchingProvince, setIsSwitchingProvince] = useState(false);
+
+  const handleProvinceSelect = (province: any) => {
+    if (selectedProvince?.name === province.name) return;
+    setIsSwitchingProvince(true);
+    // Simular processamento/sincronização para feedback visual
+    setTimeout(() => {
+      setSelectedProvince(province);
+      setIsSwitchingProvince(false);
+    }, 800);
+  };
 
 
 
@@ -484,7 +494,7 @@ export default function Dashboard() {
               <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
                 <div className="flex justify-between items-center">
                   <h2 className="text-2xl font-heading font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                    <CloudRain className="w-6 h-6 text-primary" /> Central Climática Nacional
+                    <CloudRain className="w-6 h-6 text-primary" /> Clima (Live) Nacional
                   </h2>
                   <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20">
                     Sincronizado: {new Date().toLocaleTimeString()}
@@ -499,8 +509,8 @@ export default function Dashboard() {
                   ) : provincialWeather?.map((p) => (
                     <Card
                       key={p.name}
-                      className={`p-4 cursor-pointer hover:shadow-md transition-all border-slate-200 group ${selectedProvince?.name === p.name ? 'ring-2 ring-primary border-primary' : ''}`}
-                      onClick={() => setSelectedProvince(p)}
+                      className={`p-4 cursor-pointer hover:shadow-md transition-all border-slate-200 group ${selectedProvince?.name === p.name ? 'ring-2 ring-primary border-primary' : ''} ${isSwitchingProvince && selectedProvince?.name === p.name ? 'opacity-50' : ''}`}
+                      onClick={() => handleProvinceSelect(p)}
                     >
                       <div className="text-[10px] uppercase font-bold text-slate-400 group-hover:text-primary transition-colors">{p.name}</div>
                       <div className="mt-2 flex items-center justify-between">
@@ -518,7 +528,13 @@ export default function Dashboard() {
                 </div>
 
                 {selectedProvince && (
-                  <Card className="p-6 bg-slate-900 text-white border-0 shadow-2xl relative overflow-hidden">
+                  <Card className="p-6 bg-slate-900 text-white border-0 shadow-2xl relative overflow-hidden min-h-[400px]">
+                    {isSwitchingProvince && (
+                      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex flex-col items-center justify-center animate-in fade-in duration-300">
+                        <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
+                        <div className="text-primary font-bold tracking-widest text-xs uppercase animate-pulse">Sincronizando Satélite...</div>
+                      </div>
+                    )}
                     <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
                       <CloudSun className="w-32 h-32" />
                     </div>
