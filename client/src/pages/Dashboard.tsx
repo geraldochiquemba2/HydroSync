@@ -4,6 +4,8 @@ import { toast } from "@/hooks/use-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Plot as DbPlot, InsertPlot } from "@shared/schema";
+import { Sidebar } from "@/components/dashboard/Sidebar";
+import { Topbar } from "@/components/dashboard/Topbar";
 
 import React, { useState, useEffect } from "react";
 import {
@@ -371,16 +373,19 @@ function AIAnalysisDialog({
 }
 
 export default function Dashboard() {
-  const [isSidebarOpen, setSidebarOpen] = useState(true);
   const [location, setLocation] = useLocation();
-  const [match, params] = useRoute("/:tab");
-  const activeTab = params?.tab || "overview";
-  const setActiveTab = (tab: string) => {
-    if (tab === "overview") {
-      setLocation("/");
-    } else {
-      setLocation(`/${tab}`);
+  const [match, params] = useRoute("/dashboard/:tab");
+  const activeTab = (params?.tab === "climate" || params?.tab === "plots") ? params.tab : "climate";
+
+  // Redirect to climate if on an invalid or removed tab
+  useEffect(() => {
+    if (!params?.tab || (params.tab !== "climate" && params.tab !== "plots")) {
+      setLocation("/dashboard/climate");
     }
+  }, [params?.tab, setLocation]);
+
+  const setActiveTab = (tab: string) => {
+    setLocation(`/dashboard/${tab}`);
   };
 
   const [newPlot, setNewPlot] = useState({ name: "", crop: "Soja", area: "", lat: "", lng: "", altitude: "", analysis: "" });
@@ -585,330 +590,18 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="flex min-h-screen bg-slate-50 dark:bg-slate-950">
+    <div className="flex h-screen bg-brand-white font-sans overflow-hidden">
+      <Sidebar
+        activeTab={activeTab as 'climate' | 'plots'}
+        setActiveTab={(tab) => setLocation(`/dashboard/${tab}`)}
+        onNavigate={(view) => setLocation(view === 'dashboard' ? '/dashboard' : view === 'landing' ? '/' : `/${view}`)}
+      />
 
-      {/* Sidebar Navigation */}
-      <aside
-        className={`${isSidebarOpen ? 'w-64' : 'w-20'} transition-all duration-300 ease-in-out hidden md:flex flex-col bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 z-20`}
-      >
-        <div className="h-16 flex items-center justify-between px-4 border-b border-slate-200 dark:border-slate-800">
-          {isSidebarOpen && (
-            <div className="flex items-center gap-2 text-primary font-heading font-bold text-xl">
-              <Sprout className="w-6 h-6" />
-              <span>AgriSat</span>
-            </div>
-          )}
-          {!isSidebarOpen && <Sprout className="w-6 h-6 text-primary mx-auto" />}
-        </div>
+      <main className="flex-1 flex flex-col h-screen overflow-hidden">
+        <Topbar />
 
-        <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-          <NavItem icon={<Map className="w-5 h-5" />} label="Visão Geral" active={activeTab === "overview"} onClick={() => setActiveTab("overview")} isOpen={isSidebarOpen} />
-          <NavItem icon={<Droplets className="w-5 h-5" />} label="Irrigação" active={activeTab === "irrigation"} onClick={() => setActiveTab("irrigation")} isOpen={isSidebarOpen} />
-          <NavItem icon={<Activity className="w-5 h-5" />} label="Saúde da Cultura" active={activeTab === "health"} onClick={() => setActiveTab("health")} isOpen={isSidebarOpen} />
-          <NavItem icon={<CloudRain className="w-5 h-5" />} label="Clima" active={activeTab === "climate"} onClick={() => setActiveTab("climate")} isOpen={isSidebarOpen} />
-          <NavItem icon={<MapPin className="w-5 h-5" />} label="Talhões" active={activeTab === "plots"} onClick={() => setActiveTab("plots")} isOpen={isSidebarOpen} />
-        </nav>
-
-        <div className="p-4 border-t border-slate-200 dark:border-slate-800">
-          <NavItem icon={<Settings className="w-5 h-5" />} label="Configurações" isOpen={isSidebarOpen} />
-        </div>
-      </aside>
-
-      {/* Main Content Area */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-
-        {/* Top Header */}
-        <header className="h-16 flex items-center justify-between px-4 sm:px-6 lg:px-8 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 sticky top-0 z-10">
-          <div className="flex items-center gap-4">
-            {/* Mobile Menu */}
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="md:hidden">
-                  <Menu className="w-5 h-5 text-slate-600 dark:text-slate-300" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="left" className="p-0 w-64 border-r border-slate-200 dark:border-slate-800">
-                <SheetHeader className="p-6 border-b border-slate-200 dark:border-slate-800">
-                  <SheetTitle className="flex items-center gap-2 text-primary font-heading font-bold text-xl">
-                    <Sprout className="w-6 h-6" />
-                    <span>AgriSat</span>
-                  </SheetTitle>
-                </SheetHeader>
-                <nav className="p-4 space-y-2">
-                  <SheetClose asChild>
-                    <NavItem icon={<Map className="w-5 h-5" />} label="Visão Geral" active={activeTab === "overview"} onClick={() => { setActiveTab("overview"); }} isOpen={true} />
-                  </SheetClose>
-                  <SheetClose asChild>
-                    <NavItem icon={<Droplets className="w-5 h-5" />} label="Irrigação" active={activeTab === "irrigation"} onClick={() => { setActiveTab("irrigation"); }} isOpen={true} />
-                  </SheetClose>
-                  <SheetClose asChild>
-                    <NavItem icon={<Activity className="w-5 h-5" />} label="Saúde da Cultura" active={activeTab === "health"} onClick={() => { setActiveTab("health"); }} isOpen={true} />
-                  </SheetClose>
-                  <SheetClose asChild>
-                    <NavItem icon={<CloudRain className="w-5 h-5" />} label="Clima" active={activeTab === "climate"} onClick={() => { setActiveTab("climate"); }} isOpen={true} />
-                  </SheetClose>
-                  <SheetClose asChild>
-                    <NavItem icon={<MapPin className="w-5 h-5" />} label="Talhões" active={activeTab === "plots"} onClick={() => { setActiveTab("plots"); }} isOpen={true} />
-                  </SheetClose>
-                </nav>
-              </SheetContent>
-            </Sheet>
-
-            {/* Desktop Toggle Button */}
-            <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(!isSidebarOpen)} className="hidden md:flex">
-              <Menu className="w-5 h-5 text-slate-600 dark:text-slate-300" />
-            </Button>
-            <h1 className="font-heading font-semibold text-lg text-slate-800 dark:text-white hidden sm:block">Fazenda Vale Verde</h1>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <div className="hidden sm:flex items-center gap-2 text-sm text-slate-500 mr-4">
-              <span className="flex items-center gap-1"><Sun className="w-4 h-4 text-amber-500" /> 28°C</span>
-              <span className="flex items-center gap-1"><Wind className="w-4 h-4 text-blue-400" /> 12 km/h</span>
-            </div>
-            <Avatar className="h-8 w-8 border border-slate-200">
-              <AvatarImage src="https://i.pravatar.cc/150?u=a042581f4e29026704d" alt="Agricultor" />
-              <AvatarFallback>AG</AvatarFallback>
-            </Avatar>
-          </div>
-        </header>
-
-        {/* Dashboard Content */}
-        <div className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8">
-          <div className="max-w-7xl mx-auto space-y-6">
-
-            {activeTab === "overview" && (
-              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                  <div>
-                    <h2 className="text-2xl font-heading font-bold text-slate-900 dark:text-white">Resumo da Fazenda</h2>
-                    <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Status global monitorado via satélite.</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  <Card className="lg:col-span-2 bg-gradient-to-br from-blue-500 to-blue-700 text-white border-0 shadow-lg relative overflow-hidden">
-                    <CardHeader className="relative z-10">
-                      <CardTitle className="text-lg flex items-center gap-2">Recomendação de Irrigação</CardTitle>
-                    </CardHeader>
-                    <CardContent className="relative z-10 grid grid-cols-3 gap-4">
-                      <div className="bg-white/10 p-4 rounded-xl">
-                        <div className="text-xs text-blue-100">Volume</div>
-                        <div className="text-2xl font-bold">12mm</div>
-                      </div>
-                      <div className="bg-white/10 p-4 rounded-xl">
-                        <div className="text-xs text-blue-100">Janela</div>
-                        <div className="text-2xl font-bold">22:00h</div>
-                      </div>
-                      <div className="bg-white/10 p-4 rounded-xl">
-                        <div className="text-xs text-blue-100">Status</div>
-                        <div className="text-2xl font-bold">Pendente</div>
-                      </div>
-                    </CardContent>
-                    <CardFooter className="relative z-10">
-                      <Button onClick={() => setActiveTab("irrigation")} variant="secondary" className="w-full">Detalhes da Irrigação</Button>
-                    </CardFooter>
-                  </Card>
-
-                  <Card className="glass-panel text-center flex flex-col items-center justify-center p-6">
-                    <div className="text-sm text-slate-500 mb-2">Score de Saúde</div>
-                    <div className="text-6xl font-bold text-primary">88</div>
-                    <Badge className="mt-4 bg-green-100 text-green-700">Excelente</Badge>
-                  </Card>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <Card className="glass-panel h-80 overflow-hidden relative cursor-pointer group" onClick={() => setActiveTab("plots")}>
-                    <div className="w-full h-full pointer-events-none opacity-80">
-                      <MapContainer
-                        center={[-11.2027, 17.8739]}
-                        zoom={6}
-                        style={{ height: '100%', width: '100%' }}
-                        zoomControl={false}
-                        attributionControl={false}
-                      >
-                        <TileLayer
-                          url="https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
-                          subdomains={['mt0', 'mt1', 'mt2', 'mt3']}
-                        />
-                        {activeWeatherLayer && (
-                          <TileLayer
-                            key={activeWeatherLayer}
-                            url={`https://tile.openweathermap.org/map/${activeWeatherLayer}/{z}/{x}/{y}.png?appid=${import.meta.env.VITE_OPENWEATHER_API_KEY || 'de23633304cc83584c64369524097f74'}`}
-                            opacity={0.5}
-                          />
-                        )}
-                      </MapContainer>
-                    </div>
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent p-6 flex flex-col justify-end transition-all group-hover:from-black/90">
-                      <div className="text-white font-bold text-lg flex items-center gap-2 mb-1">
-                        <Layers className="w-5 h-5 text-primary" /> Global: Mapa de Talhões
-                      </div>
-                      <p className="text-white/60 text-xs">Visualize todos os seus talhões e camadas climáticas em tempo real.</p>
-                      <div className="mt-4 flex gap-2">
-                        <Badge className="bg-primary/20 text-primary border-primary/30 text-[10px]">SATÉLITE</Badge>
-                        <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 text-[10px]">LIVE</Badge>
-                      </div>
-                    </div>
-                  </Card>
-
-                  <Card className="glass-panel h-80 overflow-hidden relative cursor-pointer group" onClick={() => setActiveTab("health")}>
-                    <div className="w-full h-full pointer-events-none opacity-80 grayscale-[0.5]">
-                      <MapContainer
-                        center={[-12.77, 15.73]}
-                        zoom={8}
-                        style={{ height: '100%', width: '100%' }}
-                        zoomControl={false}
-                        attributionControl={false}
-                      >
-                        <TileLayer
-                          url="https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
-                          subdomains={['mt0', 'mt1', 'mt2', 'mt3']}
-                        />
-                      </MapContainer>
-                    </div>
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent p-6 flex flex-col justify-end transition-all group-hover:from-black/90">
-                      <div className="text-white font-bold text-lg flex items-center gap-2 mb-1">
-                        <Activity className="w-5 h-5 text-green-400" /> Vigor Vegetativo (NDVI)
-                      </div>
-                      <p className="text-white/60 text-xs">Análise multiespectral de biomassa e saúde foliar via Sentinel-2.</p>
-                      <div className="mt-4 flex gap-2">
-                        <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-[10px]">SENTINEL-2</Badge>
-                        <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30 text-[10px]">AI-POWERED</Badge>
-                      </div>
-                    </div>
-                  </Card>
-                </div>
-              </div>
-            )}
-
-            {activeTab === "irrigation" && (
-              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-                <h2 className="text-2xl font-heading font-bold text-slate-900 dark:text-white">Gerenciamento de Irrigação</h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <Card className="glass-panel p-6">
-                    <div className="flex items-center gap-3 mb-4">
-                      <Waves className="w-6 h-6 text-blue-500" />
-                      <span className="font-bold">Ciclo Atual</span>
-                    </div>
-                    <div className="text-3xl font-bold mb-1">42%</div>
-                    <Progress value={42} className="h-2 mb-2" />
-                    <p className="text-xs text-slate-500">Próxima rega automática em 4h</p>
-                  </Card>
-                  <Card className="glass-panel p-6">
-                    <div className="flex items-center gap-3 mb-4">
-                      <CloudRain className="w-6 h-6 text-blue-400" />
-                      <span className="font-bold">Economia de Água</span>
-                    </div>
-                    <div className="text-3xl font-bold mb-1">1.2k m³</div>
-                    <p className="text-xs text-green-600 font-medium">↑ 12% vs mês anterior</p>
-                  </Card>
-                  <Card className="glass-panel p-6">
-                    <div className="flex items-center gap-3 mb-4">
-                      <ThermometerSun className="w-6 h-6 text-orange-400" />
-                      <span className="font-bold">Umidade Solo</span>
-                    </div>
-                    <div className="text-3xl font-bold mb-1">32%</div>
-                    <p className="text-xs text-amber-600 font-medium">Limiar de estresse: 25%</p>
-                  </Card>
-                </div>
-                <Card className="glass-panel p-6">
-                  <CardTitle className="mb-4 text-lg">Histórico de Consumo (7 dias)</CardTitle>
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={waterForecastData}>
-                        <XAxis dataKey="name" axisLine={false} tickLine={false} />
-                        <YAxis hide />
-                        <Tooltip />
-                        <Bar dataKey="need" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </Card>
-              </div>
-            )}
-
-            {activeTab === "health" && (
-              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-                <h2 className="text-2xl font-heading font-bold text-slate-900 dark:text-white">Saúde da Cultura (NDVI)</h2>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <Card className="glass-panel overflow-hidden border-slate-200">
-                    <CardHeader className="border-b dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
-                      <CardTitle className="text-sm flex items-center gap-2">
-                        <Map className="w-4 h-4 text-primary" /> Índice de Vigor Vegetativo (NDVI)
-                      </CardTitle>
-                    </CardHeader>
-                    <div className="h-[400px] relative">
-                      <MapContainer
-                        center={[-12.77, 15.73]}
-                        zoom={10}
-                        style={{ height: '100%', width: '100%' }}
-                        zoomControl={true}
-                      >
-                        <MapController center={[-12.77, 15.73]} zoom={10} />
-                        <TileLayer
-                          attribution='&copy; Google Maps'
-                          url="https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
-                          subdomains={['mt0', 'mt1', 'mt2', 'mt3']}
-                        />
-
-                        {activeWeatherLayer && (
-                          <TileLayer
-                            key={activeWeatherLayer}
-                            attribution='&copy; OpenWeatherMap'
-                            url={`https://tile.openweathermap.org/map/${activeWeatherLayer}/{z}/{x}/{y}.png?appid=${import.meta.env.VITE_OPENWEATHER_API_KEY || 'de23633304cc83584c64369524097f74'}`}
-                            opacity={0.6}
-                            zIndex={500}
-                          />
-                        )}
-                      </MapContainer>
-
-                      <WeatherLayerControl
-                        activeLayer={activeWeatherLayer}
-                        onLayerSelect={setActiveWeatherLayer}
-                        layers={weatherLayers}
-                      />
-
-                      <div className="absolute top-4 right-16 z-[1000] bg-black/80 backdrop-blur-md text-white p-3 rounded-xl shadow-2xl border border-white/10 text-[10px] space-y-2">
-                        <div className="font-bold border-b border-white/10 pb-1 mb-1 uppercase tracking-wider text-primary">Legenda NDVI</div>
-                        <div className="flex items-center gap-3">
-                          <div className="w-3 h-3 bg-emerald-500 rounded-sm shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
-                          <span className="font-medium">Saudável (0.8 - 1.0)</span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <div className="w-3 h-3 bg-amber-500 rounded-sm shadow-[0_0_8px_rgba(245,158,11,0.5)]"></div>
-                          <span className="font-medium">Atenção (0.5 - 0.7)</span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <div className="w-3 h-3 bg-rose-600 rounded-sm shadow-[0_0_8px_rgba(225,29,72,0.5)]"></div>
-                          <span className="font-medium">Alerta (&lt; 0.4)</span>
-                        </div>
-                      </div>
-                    </div>
-                  </Card>
-                  <Card className="glass-panel p-6">
-                    <CardTitle className="text-sm mb-6">Tendência de Crescimento</CardTitle>
-                    <div className="h-64">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={healthHistoryData}>
-                          <XAxis dataKey="name" />
-                          <YAxis domain={[0, 1]} />
-                          <Tooltip />
-                          <Area type="monotone" dataKey="ndvi" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.1} />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    </div>
-                    <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg flex items-start gap-3">
-                      <AlertTriangle className="w-5 h-5 text-blue-600 mt-0.5" />
-                      <div>
-                        <div className="font-bold text-sm text-blue-900 dark:text-blue-300">Insights de IA</div>
-                        <p className="text-xs text-blue-700 dark:text-blue-400">O crescimento acelerado na última semana sugere necessidade de aumento na suplementação de nitrogênio no Talhão 02.</p>
-                      </div>
-                    </div>
-                  </Card>
-                </div>
-              </div>
-            )}
+        <div className="flex-1 overflow-y-auto bg-gray-50/50 p-8 custom-scrollbar">
+          <div className="max-w-7xl mx-auto space-y-8">
 
             {activeTab === "climate" && (
               <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
