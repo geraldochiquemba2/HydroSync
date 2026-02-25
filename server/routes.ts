@@ -176,6 +176,10 @@ export async function registerRoutes(
       
       Responda em Português de Angola. Seja técnico e use os dados acima para responder às dúvidas do agricultor de forma supra-contextualizada.`;
 
+      if (!process.env.GROQ_API_KEY) {
+        return res.status(500).json({ message: "A variável GROQ_API_KEY não está configurada no servidor (Render)." });
+      }
+
       const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -212,9 +216,9 @@ export async function registerRoutes(
       const updatedPlot = await storage.updatePlotChatHistory(plot.id, JSON.stringify(newHistory));
       res.json({ response: aiResponse, plot: updatedPlot });
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro no chat IA:", error);
-      res.status(500).json({ message: "Erro ao processar conversa com IA" });
+      res.status(500).json({ message: error.message || "Erro ao processar conversa com a IA" });
     }
   });
 
@@ -250,6 +254,10 @@ export async function registerRoutes(
       
       Responda em Português de Angola. Seja técnico, sênior e extremamente preciso nas recomendações.`;
 
+      if (!process.env.GROQ_API_KEY) {
+        return res.status(500).json({ message: "A variável GROQ_API_KEY não está configurada no servidor (Render)." });
+      }
+
       const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -277,9 +285,9 @@ export async function registerRoutes(
       const aiResponse = data.choices[0].message.content;
 
       res.json({ response: aiResponse });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro no Global AI Chat:", error);
-      res.status(500).json({ message: "Erro ao processar sua solicitação com a IA" });
+      res.status(500).json({ message: error.message || "Erro ao processar sua solicitação com a IA" });
     }
   });
 
