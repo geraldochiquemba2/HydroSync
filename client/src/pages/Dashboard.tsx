@@ -523,10 +523,10 @@ export default function Dashboard() {
         description: "Nova mensagem técnica disponível.",
       });
     },
-    onError: () => {
+    onError: (error: Error) => {
       toast({
         title: "Erro no Chat",
-        description: "A IA não conseguiu responder no momento.",
+        description: error.message || "A IA não conseguiu responder no momento.",
         variant: "destructive"
       });
     }

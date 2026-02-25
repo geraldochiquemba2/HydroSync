@@ -8,6 +8,7 @@ import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
+import { useToast } from "@/hooks/use-toast";
 
 interface Message {
     role: "user" | "assistant";
@@ -32,8 +33,17 @@ export function GlobalAIChat({ weatherContext = [] }: GlobalAIChatProps) {
         },
         onSuccess: (data) => {
             setHistory((prev) => [...prev, { role: "assistant", content: data.response }]);
+        },
+        onError: (error: Error) => {
+            toast({
+                title: "Erro no Assistente IA",
+                description: error.message || "Verifique sua conexão ou tente mais tarde.",
+                variant: "destructive"
+            });
         }
     });
+
+    const { toast } = useToast();
 
     const handleSendMessage = () => {
         if (!message.trim() || chatMutation.isPending) return;

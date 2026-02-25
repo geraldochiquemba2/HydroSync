@@ -193,6 +193,12 @@ export async function registerRoutes(
         })
       });
 
+      if (!response.ok) {
+        const errorData = await response.text();
+        console.error("Erro da API Groq:", errorData);
+        return res.status(502).json({ message: "Erro na API da IA: " + response.statusText });
+      }
+
       const data = await response.json();
       const aiResponse = data.choices[0].message.content;
 
@@ -260,6 +266,12 @@ export async function registerRoutes(
           temperature: 0.7
         })
       });
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        console.error("Erro da API Groq:", errorData);
+        return res.status(502).json({ message: "Erro na API da IA: " + response.statusText });
+      }
 
       const data = await response.json();
       const aiResponse = data.choices[0].message.content;
