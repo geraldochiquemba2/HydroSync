@@ -244,6 +244,23 @@ function AIChatBox({ plot, chatMutation, analyzeMutation }: { plot: Plot, chatMu
         {history.length > 0 ? (
           history.map((m: any, idx: number) => (
             <div key={idx} className="flex flex-col">
+              {/* TTS for AI messages - MOVED ABOVE */}
+              {m.role === "assistant" && isSupported && (
+                <button
+                  onClick={() => isSpeaking && currentText === m.content ? stop() : speak(m.content)}
+                  className={cn(
+                    "self-start mb-1 flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full transition-all",
+                    isSpeaking && currentText === m.content
+                      ? "bg-primary/15 text-primary animate-pulse"
+                      : "text-slate-400 hover:text-primary hover:bg-primary/5"
+                  )}
+                >
+                  {isSpeaking && currentText === m.content
+                    ? <><VolumeX className="w-3 h-3" /> Parar</>
+                    : <><Volume2 className="w-3 h-3" /> Ouvir</>
+                  }
+                </button>
+              )}
               <div
                 ref={idx === history.length - 1 ? lastMessageRef : null}
                 className={cn(
@@ -261,23 +278,6 @@ function AIChatBox({ plot, chatMutation, analyzeMutation }: { plot: Plot, chatMu
                 </span>
                 {m.content}
               </div>
-              {/* TTS for AI messages */}
-              {m.role === "assistant" && isSupported && (
-                <button
-                  onClick={() => isSpeaking && currentText === m.content ? stop() : speak(m.content)}
-                  className={cn(
-                    "self-start mt-1 flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full transition-all",
-                    isSpeaking && currentText === m.content
-                      ? "bg-primary/15 text-primary animate-pulse"
-                      : "text-slate-400 hover:text-primary hover:bg-primary/5"
-                  )}
-                >
-                  {isSpeaking && currentText === m.content
-                    ? <><VolumeX className="w-3 h-3" /> Parar</>
-                    : <><Volume2 className="w-3 h-3" /> Ouvir</>
-                  }
-                </button>
-              )}
             </div>
           ))
         ) : (

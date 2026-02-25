@@ -210,21 +210,12 @@ export function GlobalAIChat({ weatherContext = [] }: GlobalAIChatProps) {
                                                     {msg.role === "assistant" ? "AgroSat IA" : "Produtor"}
                                                 </span>
                                             </div>
-                                            <div className={cn(
-                                                "p-3 rounded-2xl text-[12px] leading-relaxed shadow-sm",
-                                                msg.role === "user"
-                                                    ? "bg-primary text-white rounded-tr-none"
-                                                    : "bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-tl-none"
-                                            )}>
-                                                {msg.content}
-                                            </div>
-
-                                            {/* TTS button for assistant messages */}
+                                            {/* TTS button for assistant messages - MOVED ABOVE */}
                                             {msg.role === "assistant" && isSupported && (
                                                 <button
                                                     onClick={() => handleSpeak(msg.content)}
                                                     className={cn(
-                                                        "mt-1 flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full transition-all",
+                                                        "mb-1 flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full transition-all",
                                                         isSpeaking && currentText === msg.content
                                                             ? "bg-primary/15 text-primary animate-pulse"
                                                             : "text-slate-400 hover:text-primary hover:bg-primary/5"
@@ -237,6 +228,15 @@ export function GlobalAIChat({ weatherContext = [] }: GlobalAIChatProps) {
                                                     }
                                                 </button>
                                             )}
+
+                                            <div className={cn(
+                                                "p-3 rounded-2xl text-[12px] leading-relaxed shadow-sm",
+                                                msg.role === "user"
+                                                    ? "bg-primary text-white rounded-tr-none"
+                                                    : "bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-tl-none"
+                                            )}>
+                                                {msg.content}
+                                            </div>
                                         </div>
                                     ))}
 
