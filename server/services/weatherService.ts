@@ -1,10 +1,18 @@
 /**
  * weatherService.ts
- * Dados meteorológicos REAIS via Open-Meteo (https://open-meteo.com)
+ * Dados meteorológicos e de humidade do solo REAIS via Open-Meteo (https://open-meteo.com)
  * - Gratuito, sem API key, sem dados inventados
  * - Cache de 30 segundos por coordenada para eficiência
  * - Atualização automática a cada chamada após expirar o cache
  */
+
+export interface SoilMoisture {
+    surface: number;  // 0-1cm (superfície)
+    root: number;     // 3-9cm (zona das raízes)
+    deep: number;     // 9-27cm (profunda)
+    status: string;   // interpretação textual
+    percentage: number; // valor normalizado 0-100% baseado em solo angolano
+}
 
 export interface WeatherData {
     temp: number;
@@ -23,6 +31,8 @@ export interface WeatherData {
     windDirection?: number;
     cloudCover?: number;
     fetchedAt?: string;
+    province?: string;
+    soilMoisture?: SoilMoisture;
 }
 
 // Cache em memória: chave = "lat,lng", valor = { data, expiresAt }
@@ -65,6 +75,30 @@ function descriptionFromCode(code: number, precipitation: number): string {
     return WMO_WEATHER_MAP[code] ?? (precipitation > 0 ? "Chuva" : "Condição Desconhecida");
 }
 
+/**
+ * Interprets raw volumetric soil moisture (m³/m³) into a useful object.
+ * Typical field capacity range: 0.10 (very dry) to 0.40 (saturated)
+ */
+function interpretSoilMoisture(surface: number, root: number, deep: number): SoilMoisture {
+    // Normalize root moisture to 0-100% scale (0.05 = 0%, 0.40 = 100%)
+    const pct = Math.min(100, Math.max(0, ((root - 0.05) / 0.35) * 100));
+
+    let status: string;
+    if (pct < 20) status = "Seco Crítico";
+    else if (pct < 40) status = "Seco – Irrigar";
+    else if (pct < 60) status = "Adequado";
+    else if (pct < 80) status = "Bom – Óptimo";
+    else status = "Saturado";
+
+    return {
+        surface: Math.round(surface * 1000) / 10, // m³/m³ → % display
+        root: Math.round(root * 1000) / 10,
+        deep: Math.round(deep * 1000) / 10,
+        percentage: Math.round(pct),
+        status,
+    };
+}
+
 export async function getPlotWeather(lat: string, lng: string): Promise<WeatherData> {
     const cacheKey = `${parseFloat(lat).toFixed(4)},${parseFloat(lng).toFixed(4)}`;
     const now = Date.now();
@@ -95,9 +129,15 @@ export async function getPlotWeather(lat: string, lng: string): Promise<WeatherD
         "uv_index",
         "is_day",
     ].join(","));
+    url.searchParams.set("hourly", [
+        "soil_moisture_0_to_1cm",
+        "soil_moisture_3_to_9cm",
+        "soil_moisture_9_to_27cm",
+    ].join(","));
     url.searchParams.set("daily", "sunrise");
     url.searchParams.set("timezone", "auto");
     url.searchParams.set("wind_speed_unit", "kmh");
+    url.searchParams.set("forecast_days", "1");
 
     const response = await fetch(url.toString());
 
@@ -109,11 +149,25 @@ export async function getPlotWeather(lat: string, lng: string): Promise<WeatherD
     const json = await response.json();
     const c = json.current;
     const daily = json.daily;
+    const hourly = json.hourly;
 
     const sunriseRaw = daily?.sunrise?.[0];
     const sunriseFormatted = sunriseRaw
         ? new Date(sunriseRaw).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" })
         : "--:--";
+
+    // Get the most recent hourly soil moisture value (index 0 = current hour)
+    const soilMoisture = (
+        hourly &&
+        Array.isArray(hourly.soil_moisture_0_to_1cm) &&
+        hourly.soil_moisture_0_to_1cm.length > 0
+    )
+        ? interpretSoilMoisture(
+            hourly.soil_moisture_0_to_1cm[0] ?? 0.15,
+            hourly.soil_moisture_3_to_9cm[0] ?? 0.18,
+            hourly.soil_moisture_9_to_27cm[0] ?? 0.20,
+        )
+        : undefined;
 
     const data: WeatherData = {
         temp: c.temperature_2m,
@@ -132,11 +186,12 @@ export async function getPlotWeather(lat: string, lng: string): Promise<WeatherD
         time: new Date().toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" }),
         fetchedAt: new Date().toISOString(),
         isSimulated: false,
+        soilMoisture,
     };
 
     // Guardar no cache
     weatherCache.set(cacheKey, { data, expiresAt: now + CACHE_TTL_MS });
-    console.log(`[Weather] Dados reais obtidos: ${data.temp}°C, ${data.description}`);
+    console.log(`[Weather] Dados reais obtidos: ${data.temp}°C, ${data.description}, Solo: ${soilMoisture?.percentage ?? 'N/A'}%`);
 
     return data;
 }

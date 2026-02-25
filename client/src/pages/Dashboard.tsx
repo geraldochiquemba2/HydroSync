@@ -409,6 +409,40 @@ function AIAnalysisDialog({
   );
 }
 
+function PlotSoilMoistureBadge({ plotId }: { plotId: string }) {
+  const { data: telemetry, isLoading } = useQuery<any>({
+    queryKey: [`/api/plots/${plotId}/telemetry`],
+    staleTime: 5 * 60 * 1000, // 5 min cache
+    retry: false,
+  });
+
+  const soil = telemetry?.weather?.soilMoisture;
+
+  if (isLoading) {
+    return (
+      <div className="mt-2 flex items-center gap-1.5">
+        <div className="w-2.5 h-2.5 rounded-full bg-amber-400/50 animate-pulse" />
+        <span className="text-[10px] text-slate-400 font-medium">Obtendo humidade do solo...</span>
+      </div>
+    );
+  }
+
+  if (!soil) return null;
+
+  const color = soil.percentage < 30
+    ? "text-red-600 bg-red-50 border-red-200"
+    : soil.percentage < 60
+      ? "text-amber-600 bg-amber-50 border-amber-200"
+      : "text-green-700 bg-green-50 border-green-200";
+
+  return (
+    <div className={`mt-2 flex items-center gap-1.5 px-2 py-1 rounded-lg border text-[10px] font-bold ${color}`}>
+      <Sprout className="w-3 h-3" />
+      Solo: {soil.percentage}% — {soil.status}
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const [location, setLocation] = useLocation();
   const [match, params] = useRoute("/dashboard/:tab");
@@ -767,6 +801,38 @@ export default function Dashboard() {
                           ))}
                         </div>
                       </div>
+
+                      {/* Soil Moisture Section */}
+                      {selectedProvince.weather.soilMoisture && (
+                        <div className="mt-6 p-5 bg-amber-500/10 rounded-2xl border border-amber-500/20">
+                          <h4 className="text-sm font-bold flex items-center gap-2 mb-4 text-amber-300">
+                            <Sprout className="w-4 h-4" /> Humidade do Solo (Satélite Open-Meteo)
+                          </h4>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            {[
+                              { label: "Superfície (0-1cm)", value: selectedProvince.weather.soilMoisture.surface, color: "bg-amber-400" },
+                              { label: "Raízes (3-9cm)", value: selectedProvince.weather.soilMoisture.root, color: "bg-green-400" },
+                              { label: "Profunda (9-27cm)", value: selectedProvince.weather.soilMoisture.deep, color: "bg-blue-400" },
+                            ].map((layer) => (
+                              <div key={layer.label} className="bg-white/5 rounded-xl p-3 border border-white/10">
+                                <div className="text-[10px] text-white/60 font-bold uppercase mb-2">{layer.label}</div>
+                                <div className="text-xl font-black text-white">{layer.value}%</div>
+                                <div className="mt-2 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                                  <div className={`h-full ${layer.color} rounded-full transition-all`} style={{ width: `${Math.min(100, layer.value * 2.5)}%` }} />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="mt-3 flex items-center gap-2">
+                            <div className={`px-3 py-1 rounded-full text-xs font-bold ${selectedProvince.weather.soilMoisture.percentage < 30 ? 'bg-red-500/20 text-red-300 border border-red-500/30' :
+                              selectedProvince.weather.soilMoisture.percentage < 60 ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' :
+                                'bg-green-500/20 text-green-300 border border-green-500/30'
+                              }`}>
+                              {selectedProvince.weather.soilMoisture.status} — {selectedProvince.weather.soilMoisture.percentage}% capacidade de campo
+                            </div>
+                          </div>
+                        </div>
+                      )}
 
                       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6">
                         <div className="lg:col-span-4 bg-white/5 p-6 rounded-2xl border border-white/10 flex flex-col justify-between">
@@ -1167,6 +1233,9 @@ export default function Dashboard() {
                             <Activity className="w-3 h-3" /> Elev: {plot.altitude}m
                           </div>
                         </div>
+
+                        {/* Real-time soil moisture per plot */}
+                        <PlotSoilMoistureBadge plotId={plot.id} />
 
                         <div className="flex gap-2 mt-2">
                           <Button
