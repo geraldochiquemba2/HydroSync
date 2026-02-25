@@ -7,7 +7,7 @@ import { Plot as DbPlot, InsertPlot } from "@shared/schema";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { Topbar } from "@/components/dashboard/Topbar";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Droplets, Map, Activity, CloudRain,
   Settings, User, Bell, ChevronRight, Menu, MapPin,
