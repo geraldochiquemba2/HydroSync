@@ -102,6 +102,24 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
 });
 
+const redIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
+
+const blueIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
+
 function MapEvents({ onLocationSelect, onMapChange }: { onLocationSelect: (lat: number, lng: number) => void, onMapChange: (center: [number, number], zoom: number) => void }) {
   useMapEvents({
     click(e: any) {
@@ -877,7 +895,7 @@ export default function Dashboard() {
                               }}
                             />
                             {newPlot.lat && newPlot.lng && (
-                              <Marker position={[Number(newPlot.lat), Number(newPlot.lng)]} />
+                              <Marker position={[Number(newPlot.lat), Number(newPlot.lng)]} icon={redIcon} />
                             )}
                             {polygonPoints.length > 0 && (
                               <>
@@ -886,7 +904,7 @@ export default function Dashboard() {
                                   pathOptions={{ color: 'yellow', fillColor: 'yellow', fillOpacity: 0.3 }}
                                 />
                                 {polygonPoints.map((pos, idx) => (
-                                  <Marker key={idx} position={pos} />
+                                  <Marker key={idx} position={pos} icon={blueIcon} />
                                 ))}
                               </>
                             )}
