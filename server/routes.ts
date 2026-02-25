@@ -203,6 +203,57 @@ export async function registerRoutes(
     }
   });
 
+  // Global AI Chat Route
+  app.post("/api/ai/chat", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { message, history = [], weatherContext = [] } = req.body;
+      const plots = await storage.getPlotsByUser(req.user!.id);
+
+      const systemContext = `Você é o assistente Agrosatelite IA, um especialista em agronomia e monitoramento por satélite em Angola.
+      Você tem acesso aos dados técnicos do agricultor ${req.user!.name}.
+      
+      ESTADO ATUAL DO AGRICULTOR:
+      - Talhões Registrados: ${plots.length}
+      - Detalhes dos Talhões: ${plots.map(p => `${p.name} (${p.crop}, ${p.area}ha, Saúde: ${p.health}%)`).join(' | ')}
+      
+      CONTEXTO METEOROLÓGICO (Províncias Selecionadas):
+      ${weatherContext.map((w: any) => `${w.name}: ${w.temp}°C, ${w.description}`).join(' | ')}
+      
+      INSTRUÇÕES:
+      1. Responda em Português de Angola.
+      2. Seja extremamente técnico, prestativo e profissional.
+      3. Se o utilizador perguntar sobre um talhão específico, use os nomes citados acima.
+      4. Forneça recomendações baseadas no cruzamento entre a cultura, a saúde do talhão e o clima atual.
+      5. Se o agricultor não tiver talhões, incentive-o a registar o primeiro no mapa.`;
+
+      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model: "llama-3.3-70b-versatile",
+          messages: [
+            { role: "system", content: systemContext },
+            ...history,
+            { role: "user", content: message }
+          ],
+          temperature: 0.7
+        })
+      });
+
+      const data = await response.json();
+      const aiResponse = data.choices[0].message.content;
+
+      res.json({ response: aiResponse });
+    } catch (error) {
+      console.error("Erro no Global AI Chat:", error);
+      res.status(500).json({ message: "Erro ao processar sua solicitação com a IA" });
+    }
+  });
+
   // Force-refresh the weather cache for a specific plot
   app.post("/api/weather/refresh", async (req, res) => {
     try {

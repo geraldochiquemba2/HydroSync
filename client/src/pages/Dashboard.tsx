@@ -35,6 +35,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetClose } from "@/components/ui/sheet";
+import { GlobalAIChat } from "@/components/dashboard/GlobalAIChat";
 
 // Assets generated
 import satelliteFarm from "@/assets/images/satellite-farm.png";
@@ -1175,6 +1176,14 @@ export default function Dashboard() {
         plotId={plotForAnalysisId}
         chatMutation={chatMutation}
         analyzeMutation={analyzeMutation}
+      />
+
+      <GlobalAIChat
+        weatherContext={provincialWeather?.map(p => ({
+          name: p.name,
+          temp: p.weather.temp,
+          description: p.weather.description
+        }))}
       />
     </div >
   );
