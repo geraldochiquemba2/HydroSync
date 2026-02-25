@@ -1,3 +1,10 @@
+/**
+ * weatherService.ts
+ * Dados meteorológicos REAIS via Open-Meteo (https://open-meteo.com)
+ * - Gratuito, sem API key, sem dados inventados
+ * - Cache de 30 segundos por coordenada para eficiência
+ * - Atualização automática a cada chamada após expirar o cache
+ */
 
 export interface WeatherData {
     temp: number;
@@ -12,92 +19,134 @@ export interface WeatherData {
     sunrise?: string;
     isDay?: boolean;
     time?: string;
-    isSimulated?: boolean;
+    isSimulated: false;
+    windDirection?: number;
+    cloudCover?: number;
+    fetchedAt?: string;
+}
+
+// Cache em memória: chave = "lat,lng", valor = { data, expiresAt }
+const weatherCache = new Map<string, { data: WeatherData; expiresAt: number }>();
+const CACHE_TTL_MS = 30 * 1000; // 30 segundos
+
+// Mapeamento de WMO Weather Codes para Português
+const WMO_WEATHER_MAP: Record<number, string> = {
+    0: "Céu Limpo",
+    1: "Principalmente Limpo",
+    2: "Parcialmente Nublado",
+    3: "Encoberto",
+    45: "Nevoeiro",
+    48: "Nevoeiro Gelado",
+    51: "Chuvisco Leve",
+    53: "Chuvisco Moderado",
+    55: "Chuvisco Intenso",
+    56: "Chuvisco Gélido Leve",
+    57: "Chuvisco Gélido Intenso",
+    61: "Chuva Fraca",
+    63: "Chuva Moderada",
+    65: "Chuva Forte",
+    66: "Chuva Gélida Fraca",
+    67: "Chuva Gélida Forte",
+    71: "Neve Fraca",
+    73: "Neve Moderada",
+    75: "Neve Forte",
+    77: "Granizo",
+    80: "Aguaceiros Fracos",
+    81: "Aguaceiros Moderados",
+    82: "Aguaceiros Violentos",
+    85: "Aguaceiros de Neve Fracos",
+    86: "Aguaceiros de Neve Intensos",
+    95: "Trovoada",
+    96: "Trovoada com Granizo Leve",
+    99: "Trovoada com Granizo Intenso",
+};
+
+function descriptionFromCode(code: number, precipitation: number): string {
+    return WMO_WEATHER_MAP[code] ?? (precipitation > 0 ? "Chuva" : "Condição Desconhecida");
 }
 
 export async function getPlotWeather(lat: string, lng: string): Promise<WeatherData> {
-    const apiKey = process.env.OPENWEATHER_API_KEY;
+    const cacheKey = `${parseFloat(lat).toFixed(4)},${parseFloat(lng).toFixed(4)}`;
+    const now = Date.now();
 
-    if (!apiKey) {
-        // Fallback para Open-Meteo (Real-time sem chaves)
-        console.log("OPENWEATHER_API_KEY não encontrada. Usando dados REAIS da Open-Meteo.");
-        return fetchOpenMeteo(lat, lng);
+    // Retornar do cache se ainda válido
+    const cached = weatherCache.get(cacheKey);
+    if (cached && now < cached.expiresAt) {
+        console.log(`[Weather] Cache hit para ${cacheKey}`);
+        return cached.data;
     }
 
-    try {
-        const latNum = parseFloat(lat);
-        const lngNum = parseFloat(lng);
+    console.log(`[Weather] Buscando dados REAIS da Open-Meteo para lat=${lat}, lng=${lng}`);
 
-        // Using OpenWeather One Call 3.0 (or fallback to 2.5 if needed)
-        const url = `https://api.openweathermap.org/data/3.0/onecall?lat=${latNum}&lon=${lngNum}&exclude=minutely,daily,alerts&units=metric&appid=${apiKey}`;
+    const url = new URL("https://api.open-meteo.com/v1/forecast");
+    url.searchParams.set("latitude", lat);
+    url.searchParams.set("longitude", lng);
+    url.searchParams.set("current", [
+        "temperature_2m",
+        "relative_humidity_2m",
+        "apparent_temperature",
+        "precipitation",
+        "weather_code",
+        "pressure_msl",
+        "cloud_cover",
+        "visibility",
+        "wind_speed_10m",
+        "wind_direction_10m",
+        "uv_index",
+        "is_day",
+    ].join(","));
+    url.searchParams.set("daily", "sunrise");
+    url.searchParams.set("timezone", "auto");
+    url.searchParams.set("wind_speed_unit", "kmh");
 
-        const response = await fetch(url);
-        if (!response.ok) throw new Error("Falha ao buscar clima");
+    const response = await fetch(url.toString());
 
-        const data = await response.json();
-        const current = data.current;
-
-        return {
-            temp: current.temp,
-            humidity: current.humidity,
-            windSpeed: current.wind_speed,
-            rain: current.rain ? current.rain['1h'] || 0 : 0,
-            uvIndex: current.uvi,
-            description: current.weather[0].description
-        };
-    } catch (error) {
-        console.error("Erro na API OpenWeather:", error);
-        return fetchOpenMeteo(lat, lng);
+    if (!response.ok) {
+        const body = await response.text();
+        throw new Error(`Open-Meteo erro ${response.status}: ${body}`);
     }
+
+    const json = await response.json();
+    const c = json.current;
+    const daily = json.daily;
+
+    const sunriseRaw = daily?.sunrise?.[0];
+    const sunriseFormatted = sunriseRaw
+        ? new Date(sunriseRaw).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" })
+        : "--:--";
+
+    const data: WeatherData = {
+        temp: c.temperature_2m,
+        humidity: c.relative_humidity_2m,
+        windSpeed: c.wind_speed_10m,
+        windDirection: c.wind_direction_10m,
+        rain: c.precipitation,
+        uvIndex: c.uv_index,
+        apparentTemp: c.apparent_temperature,
+        pressure: c.pressure_msl,
+        visibility: typeof c.visibility === "number" ? c.visibility / 1000 : undefined, // metros → km
+        cloudCover: c.cloud_cover,
+        isDay: c.is_day === 1,
+        description: descriptionFromCode(c.weather_code, c.precipitation),
+        sunrise: sunriseFormatted,
+        time: new Date().toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" }),
+        fetchedAt: new Date().toISOString(),
+        isSimulated: false,
+    };
+
+    // Guardar no cache
+    weatherCache.set(cacheKey, { data, expiresAt: now + CACHE_TTL_MS });
+    console.log(`[Weather] Dados reais obtidos: ${data.temp}°C, ${data.description}`);
+
+    return data;
 }
 
-async function fetchOpenMeteo(lat: string, lng: string): Promise<WeatherData> {
-    try {
-        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,precipitation,uv_index,weather_code,apparent_temperature,pressure_msl,visibility,is_day&daily=sunrise&timezone=auto`;
-        const res = await fetch(url);
-        if (!res.ok) throw new Error("Erro Open-Meteo");
-        const data = await res.json();
-        const current = data.current;
-        const daily = data.daily;
-        const code = current.weather_code;
-
-        // Mapeamento WMO Weather Codes para Português
-        const weatherMap: Record<number, string> = {
-            0: "Céu Limpo",
-            1: "Principalmente Limpo", 2: "Parcialmente Nublado", 3: "Encoberto",
-            45: "Nevoeiro", 48: "Nevoeiro com Gelo",
-            51: "Chuvisco Leve", 53: "Chuvisco Moderado", 55: "Chuvisco Denso",
-            61: "Chuva Leve", 63: "Chuva Moderada", 65: "Chuva Forte",
-            71: "Neve Leve", 73: "Neve Moderada", 75: "Neve Forte",
-            80: "Aguaceiros Leves", 81: "Aguaceiros Moderados", 82: "Aguaceiros Violentos",
-            95: "Trovoada", 96: "Trovoada com Granizo Leve", 99: "Trovoada com Granizo Forte"
-        };
-
-        return {
-            temp: current.temperature_2m,
-            humidity: current.relative_humidity_2m,
-            windSpeed: current.wind_speed_10m,
-            rain: current.precipitation,
-            uvIndex: current.uv_index,
-            apparentTemp: current.apparent_temperature,
-            pressure: current.pressure_msl,
-            visibility: current.visibility / 1000, // Convert to km
-            isDay: current.is_day === 1,
-            time: new Date().toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }),
-            sunrise: daily.sunrise?.[0] ? new Date(daily.sunrise[0]).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }) : "--:--",
-            description: weatherMap[code] || (current.precipitation > 0 ? "Chuva" : "Limpo"),
-            isSimulated: false
-        };
-    } catch (e) {
-        console.error("Erro crítico de clima:", e);
-        return {
-            temp: 25,
-            humidity: 60,
-            windSpeed: 5,
-            rain: 0,
-            uvIndex: 5,
-            description: "Clima Indisponível",
-            isSimulated: true
-        };
+/** Limpa o cache de uma coordenada específica (útil para forçar atualização) */
+export function clearWeatherCache(lat?: string, lng?: string): void {
+    if (lat && lng) {
+        const key = `${parseFloat(lat).toFixed(4)},${parseFloat(lng).toFixed(4)}`;
+        weatherCache.delete(key);
+    } else {
+        weatherCache.clear();
     }
 }

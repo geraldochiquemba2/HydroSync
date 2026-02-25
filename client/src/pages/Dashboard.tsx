@@ -1,4 +1,5 @@
 import { Select, SelectContent, SelectItem, SelectValue, SelectTrigger } from "@/components/ui/select";
+import { useLocation, useRoute } from "wouter";
 import { toast } from "@/hooks/use-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -192,7 +193,16 @@ function MapController({ center, zoom }: { center: [number, number], zoom: numbe
 
 export default function Dashboard() {
   const [isSidebarOpen, setSidebarOpen] = useState(true);
-  const [activeTab, setActiveTab] = useState("overview");
+  const [location, setLocation] = useLocation();
+  const [match, params] = useRoute("/:tab");
+  const activeTab = params?.tab || "overview";
+  const setActiveTab = (tab: string) => {
+    if (tab === "overview") {
+      setLocation("/");
+    } else {
+      setLocation(`/${tab}`);
+    }
+  };
 
   const [newPlot, setNewPlot] = useState({ name: "", crop: "Soja", area: "", lat: "", lng: "", altitude: "", analysis: "" });
   const [polygonPoints, setPolygonPoints] = useState<[number, number][]>([]);
@@ -308,8 +318,16 @@ export default function Dashboard() {
   const { data: provincialWeather, isLoading: loadingProvinces } = useQuery<any[]>({
     queryKey: ["/api/weather/provinces"],
     enabled: activeTab === "climate",
-    refetchInterval: 300000 // 5 minutos para o painel global
+    refetchInterval: 60000 // 1 minuto para o painel global (mais frequente)
   });
+
+  const refreshWeather = () => {
+    queryClient.invalidateQueries({ queryKey: ["/api/weather/provinces"] });
+    toast({
+      title: "Sincronizando...",
+      description: "Buscando dados meteorológicos de satélite atualizados.",
+    });
+  };
 
   const [selectedProvince, setSelectedProvince] = useState<any>(null);
   const [isSwitchingProvince, setIsSwitchingProvince] = useState(false);
@@ -709,9 +727,18 @@ export default function Dashboard() {
                   <h2 className="text-2xl font-heading font-bold text-slate-900 dark:text-white flex items-center gap-2">
                     <CloudRain className="w-6 h-6 text-primary" /> Clima (Live) Nacional
                   </h2>
-                  <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20">
-                    Sincronizado: {new Date().toLocaleTimeString()}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={refreshWeather}
+                      className="px-3 py-1 bg-primary text-white rounded-md text-[10px] font-bold shadow-sm hover:bg-primary/90 transition-all flex items-center gap-1"
+                      disabled={loadingProvinces}
+                    >
+                      {loadingProvinces ? "..." : "ATUALIZAR AGORA"}
+                    </button>
+                    <Badge className="bg-green-100 text-green-700 border-green-200">
+                      Sincronizado: {new Date().toLocaleTimeString()}
+                    </Badge>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
@@ -803,8 +830,8 @@ export default function Dashboard() {
                         <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-3">
                           {[
                             { icon: <Sunrise className="w-3 h-3 text-amber-400" />, label: "Nascer do Sol", value: selectedProvince.weather.sunrise || "--:--" },
-                            { icon: <Sun className="w-3 h-3 text-yellow-400" />, label: "Índice UV", value: selectedProvince.weather.uvIndex },
-                            { icon: <Wind className="w-3 h-3 text-slate-400" />, label: "Vento", value: `${selectedProvince.weather.windSpeed} km/h` },
+                            { icon: <Sun className="w-3 h-3 text-yellow-400" />, label: "Índice UV", value: selectedProvince.weather.uvIndex?.toFixed(1) || "0.0" },
+                            { icon: <Wind className="w-3 h-3 text-slate-400" />, label: "Vento", value: `${selectedProvince.weather.windSpeed?.toFixed(1) || "0.0"} km/h` },
                             { icon: <ThermometerSun className="w-3 h-3 text-orange-400" />, label: "Sensação", value: `${selectedProvince.weather.apparentTemp?.toFixed(1) || selectedProvince.weather.temp}°` },
                             { icon: <CloudRain className="w-3 h-3 text-blue-400" />, label: "Precipitação", value: `${selectedProvince.weather.rain} mm` },
                             { icon: <Droplets className="w-3 h-3 text-cyan-400" />, label: "Humidade", value: `${selectedProvince.weather.humidity}%` },
@@ -979,10 +1006,15 @@ export default function Dashboard() {
                               <Marker position={[Number(newPlot.lat), Number(newPlot.lng)]} />
                             )}
                             {polygonPoints.length > 0 && (
-                              <Polygon
-                                positions={polygonPoints}
-                                pathOptions={{ color: 'yellow', fillColor: 'yellow', fillOpacity: 0.3 }}
-                              />
+                              <>
+                                <Polygon
+                                  positions={polygonPoints}
+                                  pathOptions={{ color: 'yellow', fillColor: 'yellow', fillOpacity: 0.3 }}
+                                />
+                                {polygonPoints.map((pos, idx) => (
+                                  <Marker key={idx} position={pos} />
+                                ))}
+                              </>
                             )}
                           </MapContainer>
 
@@ -1211,9 +1243,33 @@ export default function Dashboard() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {plots.map(plot => (
                     <Card key={plot.id} className="glass-panel overflow-hidden group relative">
-                      <div className="h-32 bg-slate-200 relative">
-                        <img src={satelliteFarm} className="w-full h-full object-cover opacity-50" />
-                        <div className="absolute inset-0 flex items-center justify-center font-bold text-slate-800 text-xl">{plot.name}</div>
+                      <div className="h-32 bg-slate-200 relative overflow-hidden">
+                        {plot.lat && plot.lng ? (
+                          <MapContainer
+                            center={[Number(plot.lat), Number(plot.lng)]}
+                            zoom={13}
+                            style={{ height: '100%', width: '100%' }}
+                            zoomControl={false}
+                            attributionControl={false}
+                            dragging={false}
+                            scrollWheelZoom={false}
+                            doubleClickZoom={false}
+                          >
+                            <TileLayer
+                              url="https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
+                              subdomains={['mt0', 'mt1', 'mt2', 'mt3']}
+                            />
+                            {plot.boundaryPoints && (
+                              <Polygon
+                                positions={plot.boundaryPoints}
+                                pathOptions={{ color: 'yellow', fillColor: 'yellow', fillOpacity: 0.3 }}
+                              />
+                            )}
+                          </MapContainer>
+                        ) : (
+                          <img src={satelliteFarm} className="w-full h-full object-cover opacity-50" />
+                        )}
+                        <div className="absolute inset-0 flex items-center justify-center font-bold text-white text-xl drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] z-10">{plot.name}</div>
                         <Button
                           variant="destructive"
                           size="icon"

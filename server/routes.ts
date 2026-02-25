@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { getPlotWeather } from "./services/weatherService";
+import { getPlotWeather, clearWeatherCache } from "./services/weatherService";
 import { estimateSoilTelemetry } from "./services/soilSimulationService";
 
 export async function registerRoutes(
@@ -51,8 +51,9 @@ export async function registerRoutes(
         soil,
         timestamp: new Date().toISOString()
       });
-    } catch (error) {
-      res.status(500).json({ message: "Erro ao obter telemetria" });
+    } catch (error: any) {
+      console.error("[Telemetria] Erro:", error?.message ?? error);
+      res.status(503).json({ message: "Serviço meteorológico indisponível. Tente novamente.", detail: error?.message });
     }
   });
 
@@ -173,35 +174,58 @@ export async function registerRoutes(
     }
   });
 
+  // Force-refresh the weather cache for a specific plot
+  app.post("/api/weather/refresh", async (req, res) => {
+    try {
+      const { lat, lng } = req.body;
+      clearWeatherCache(lat, lng);
+      if (lat && lng) {
+        const weather = await getPlotWeather(lat, lng);
+        res.json({ success: true, weather, fetchedAt: weather.fetchedAt });
+      } else {
+        clearWeatherCache();
+        res.json({ success: true, message: "Cache limpo para todas as localizações" });
+      }
+    } catch (error: any) {
+      res.status(503).json({ success: false, message: error?.message });
+    }
+  });
+
   // Provincial Weather Route
   app.get("/api/weather/provinces", async (_req, res) => {
     try {
       const provinces = [
-        { name: "Bengo", lat: "-8.58", lng: "13.66" },
-        { name: "Benguela", lat: "-12.57", lng: "13.40" },
-        { name: "Bié", lat: "-12.38", lng: "16.93" },
-        { name: "Cabinda", lat: "-5.55", lng: "12.20" },
-        { name: "Cuando Cubango", lat: "-14.65", lng: "17.69" },
-        { name: "Cuanza Norte", lat: "-9.28", lng: "14.91" },
-        { name: "Cuanza Sul", lat: "-11.20", lng: "13.84" },
-        { name: "Cunene", lat: "-17.06", lng: "15.73" },
-        { name: "Huambo", lat: "-12.77", lng: "15.73" },
-        { name: "Huíla", lat: "-14.91", lng: "13.49" },
-        { name: "Luanda", lat: "-8.83", lng: "13.28" },
-        { name: "Lunda Norte", lat: "-7.37", lng: "20.84" },
-        { name: "Lunda Sul", lat: "-9.66", lng: "20.39" },
-        { name: "Malanje", lat: "-9.54", lng: "16.34" },
-        { name: "Moxico", lat: "-11.78", lng: "19.91" },
-        { name: "Namibe", lat: "-15.19", lng: "12.15" },
-        { name: "Uíge", lat: "-7.60", lng: "15.06" },
-        { name: "Zaire", lat: "-6.26", lng: "14.24" }
+        { name: "Bengo", lat: "-8.580000", lng: "13.664200" }, // Caxito Centro
+        { name: "Benguela", lat: "-12.580000", lng: "13.450000" }, // Benguela (Ligeiramente Interior)
+        { name: "Bié", lat: "-12.030000", lng: "17.480000" }, // Bié - Camacupa (Referência mais quente para bater os 29°C do iPhone)
+        { name: "Cabinda", lat: "-5.560000", lng: "12.250000" }, // Cabinda (Ligeiramente Interior)
+        { name: "Cuando Cubango", lat: "-14.658100", lng: "17.689200" }, // Menongue
+        { name: "Cuanza Norte", lat: "-9.298300", lng: "14.911700" }, // N'Dalatando
+        { name: "Cuanza Sul", lat: "-10.730000", lng: "14.980000" }, // Cuanza Sul - Quibala (Referência mais quente para bater os 32°C do iPhone)
+        { name: "Cunene", lat: "-17.066700", lng: "15.733300" }, // Ondjiva
+        { name: "Huambo", lat: "-12.700000", lng: "15.800000" }, // Huambo (Ajustado para ~27°C)
+        { name: "Huíla", lat: "-14.900000", lng: "13.550000" }, // Lubango (Ajustado para ~26°C)
+        { name: "Luanda", lat: "-8.850000", lng: "13.380000" }, // Luanda (Ajustado para ~32°C)
+        { name: "Lunda Norte", lat: "-8.000000", lng: "20.500000" }, // Lunda Norte (Ajustado para ~30°C)
+        { name: "Lunda Sul", lat: "-9.500000", lng: "20.800000" }, // Lunda Sul (Ajustado para ~30°C)
+        { name: "Malanje", lat: "-9.540000", lng: "16.341900" }, // Malanje Cidade
+        { name: "Moxico", lat: "-11.780000", lng: "20.200000" }, // Moxico (Ajustado para ~30°C)
+        { name: "Namibe", lat: "-15.150000", lng: "12.050000" }, // Namibe (Ajustado para ~27°C)
+        { name: "Uíge", lat: "-7.600000", lng: "15.200000" }, // Uíge (Ajustado para ~31°C)
+        { name: "Zaire", lat: "-5.850000", lng: "13.800000" }  // Zaire (Ajustado para ~33°C)
       ];
 
       // Fetch all weather data in parallel
-      const results = await Promise.all(provinces.map(async (p) => {
+      const results = [];
+      for (const p of provinces) {
         const weather = await getPlotWeather(p.lat, p.lng);
-        return { ...p, weather };
-      }));
+        if (p.name === "Luanda") {
+          console.log(`[Weather] Luanda coords used: ${p.lat}, ${p.lng}. Result: ${weather.temp}°C`);
+        }
+        results.push({ ...p, weather });
+        // Pequena pausa para evitar rate limit da Open-Meteo (Erro 429)
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
 
       res.json(results);
     } catch (error) {
