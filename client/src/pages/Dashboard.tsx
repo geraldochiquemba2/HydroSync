@@ -279,17 +279,28 @@ function AIChatBox({ plot, chatMutation, analyzeMutation }: { plot: Plot, chatMu
 function AIAnalysisDialog({
   open,
   onClose,
-  plot,
+  plotId,
   chatMutation,
   analyzeMutation
 }: {
   open: boolean,
   onClose: () => void,
-  plot: DbPlot | null,
+  plotId: string | null,
   chatMutation: any,
   analyzeMutation: any
 }) {
+  // Always read from React Query cache so chat history updates after each message
+  const { data: dbPlots = [] } = useQuery<DbPlot[]>({ queryKey: ["/api/plots"] });
+  const plot = dbPlots.find(p => p.id === plotId) ?? null;
+
   if (!plot) return null;
+
+  const plotForDisplay: Plot = {
+    ...plot,
+    area: Number(plot.area),
+    health: Number(plot.health),
+    boundaryPoints: plot.boundaryPoints ? JSON.parse(plot.boundaryPoints) : undefined
+  };
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -342,12 +353,7 @@ function AIAnalysisDialog({
             </div>
 
             <AIChatBox
-              plot={{
-                ...plot,
-                area: Number(plot.area),
-                health: Number(plot.health),
-                boundaryPoints: plot.boundaryPoints ? JSON.parse(plot.boundaryPoints) : undefined
-              } as Plot}
+              plot={plotForDisplay}
               chatMutation={chatMutation}
               analyzeMutation={analyzeMutation}
             />
@@ -383,7 +389,7 @@ export default function Dashboard() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [activeWeatherLayer, setActiveWeatherLayer] = useState<string | null>(null);
   const [isAnalysisDialogOpen, setIsAnalysisDialogOpen] = useState(false);
-  const [plotForAnalysis, setPlotForAnalysis] = useState<DbPlot | null>(null);
+  const [plotForAnalysisId, setPlotForAnalysisId] = useState<string | null>(null);
 
   const weatherLayers = [
     { id: "precipitation_new", label: "Chuva", icon: <CloudRain className="w-3 h-3" />, color: "text-blue-400" },
@@ -416,7 +422,7 @@ export default function Dashboard() {
       setIsAddDialogOpen(false);
 
       // Auto-trigger analysis and open dialog
-      setPlotForAnalysis(data);
+      setPlotForAnalysisId(data.id);
       setIsAnalysisDialogOpen(true);
       if (data.id) {
         analyzeMutation.mutate(data.id);
@@ -1448,7 +1454,7 @@ export default function Dashboard() {
       <AIAnalysisDialog
         open={isAnalysisDialogOpen}
         onClose={() => setIsAnalysisDialogOpen(false)}
-        plot={plotForAnalysis}
+        plotId={plotForAnalysisId}
         chatMutation={chatMutation}
         analyzeMutation={analyzeMutation}
       />
