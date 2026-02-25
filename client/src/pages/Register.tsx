@@ -3,18 +3,22 @@ import { ArrowLeft, Droplets, Mail, Lock, User } from 'lucide-react';
 
 import { useLocation } from "wouter";
 
+import { useAuth } from "@/hooks/use-auth";
+
 export function Register() {
     const [, setLocation] = useLocation();
-    const [name, setName] = useState('');
-    const [email, setEmail] = useState('');
+    const { registerMutation, user } = useAuth();
+    const [phone, setPhone] = useState('');
     const [password, setPassword] = useState('');
+
+    // Redirect if already logged in
+    if (user) {
+        setLocation('/dashboard');
+    }
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        // Redirecting to Dashboard to simulate successful registration
-        if (name && email && password) {
-            setLocation('/dashboard');
-        }
+        registerMutation.mutate({ phone, password });
     };
 
     return (
@@ -42,30 +46,18 @@ export function Register() {
 
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-2">Nome Completo</label>
+                            <label className="block text-sm font-bold text-gray-700 mb-2">Telemóvel</label>
                             <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400"><User size={20} /></div>
+                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400">
+                                    <div className="text-sm font-bold">+244</div>
+                                </div>
                                 <input
-                                    type="text"
-                                    value={name}
-                                    onChange={(e) => setName(e.target.value)}
-                                    className="block w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-accent outline-none text-brand-black transition-all"
-                                    placeholder="Seu nome"
-                                    required
-                                />
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-2">E-mail</label>
-                            <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400"><Mail size={20} /></div>
-                                <input
-                                    type="email"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    className="block w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-accent outline-none text-brand-black transition-all"
-                                    placeholder="voce@fazenda.com"
+                                    type="tel"
+                                    value={phone}
+                                    onChange={(e) => setPhone(e.target.value)}
+                                    className="block w-full pl-16 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-accent outline-none text-brand-black transition-all"
+                                    placeholder="9xxxxxxxx"
+                                    pattern="9[0-9]{8}"
                                     required
                                 />
                             </div>
@@ -93,8 +85,14 @@ export function Register() {
                             </label>
                         </div>
 
-                        <button type="submit" className="w-full bg-brand-primary hover:bg-brand-secondary text-white font-bold py-4 rounded-xl shadow-lg shadow-brand-primary/20 transition-all mt-4">
-                            Começar agora
+                        <button
+                            type="submit"
+                            disabled={registerMutation.isPending}
+                            className="w-full bg-brand-primary hover:bg-brand-secondary text-white font-bold py-4 rounded-xl shadow-lg shadow-brand-primary/20 transition-all mt-4 disabled:opacity-50 flex items-center justify-center"
+                        >
+                            {registerMutation.isPending ? (
+                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                            ) : "Começar agora"}
                         </button>
                     </form>
 

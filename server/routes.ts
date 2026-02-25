@@ -3,11 +3,13 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { getPlotWeather, clearWeatherCache } from "./services/weatherService";
 import { estimateSoilTelemetry } from "./services/soilSimulationService";
+import { setupAuth } from "./auth";
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  setupAuth(app);
   // put application routes here
   // prefix all routes with /api
 

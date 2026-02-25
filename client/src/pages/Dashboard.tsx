@@ -61,14 +61,14 @@ interface Plot {
   id: string;
   name: string;
   crop: string;
-  area: number;
-  health: number;
+  area: string;
+  health: string | null;
   lat: string;
   lng: string;
   altitude: string;
   boundaryPoints?: [number, number][];
-  analysis?: string;
-  chatHistory?: string; // Campo novo para o histórico
+  analysis?: string | null;
+  chatHistory?: string | null;
 }
 
 // ... rest of the interface ...
@@ -299,8 +299,6 @@ function AIAnalysisDialog({
 
   const plotForDisplay: Plot = {
     ...plot,
-    area: Number(plot.area),
-    health: Number(plot.health),
     boundaryPoints: plot.boundaryPoints ? JSON.parse(plot.boundaryPoints) : undefined
   };
 
@@ -409,8 +407,6 @@ export default function Dashboard() {
 
   const plots: Plot[] = dbPlots.map((p: any) => ({
     ...p,
-    area: Number(p.area),
-    health: Number(p.health),
     boundaryPoints: p.boundaryPoints ? JSON.parse(p.boundaryPoints) : undefined
   }));
 
@@ -550,18 +546,19 @@ export default function Dashboard() {
       lat: newPlot.lat,
       lng: newPlot.lng,
       altitude: newPlot.altitude || "0",
-      boundaryPoints: polygonPoints.length >= 3 ? JSON.stringify(polygonPoints) : null
+      boundaryPoints: polygonPoints.length >= 3 ? JSON.stringify(polygonPoints) : null,
+      analysis: newPlot.analysis || null
     };
 
     createPlotMutation.mutate(insertData);
   };
 
-  const viewOnMap = (plot: DbPlot) => {
+  const viewOnMap = (plot: Plot) => {
     setIsSwitchingPlot(true);
     setNewPlot({
       name: plot.name,
       crop: plot.crop,
-      area: plot.area.toString(),
+      area: plot.area,
       lat: plot.lat,
       lng: plot.lng,
       altitude: plot.altitude,
@@ -569,12 +566,7 @@ export default function Dashboard() {
     });
 
     if (plot.boundaryPoints) {
-      try {
-        setPolygonPoints(JSON.parse(plot.boundaryPoints));
-      } catch (e) {
-        console.error("Erro ao processar geometria do talhão:", e);
-        setPolygonPoints([]);
-      }
+      setPolygonPoints(plot.boundaryPoints);
     } else {
       setPolygonPoints([]);
     }
@@ -809,7 +801,7 @@ export default function Dashboard() {
                       <Button
                         className="gap-2 shadow-lg hover:shadow-primary/20 transition-all"
                         onClick={() => {
-                          setNewPlot({ name: "", crop: "Soja", area: "", lat: "", lng: "", altitude: "" });
+                          setNewPlot({ name: "", crop: "Soja", area: "", lat: "", lng: "", altitude: "", analysis: "" });
                           setPolygonPoints([]);
                           setMapFocus({ center: [-11.2027, 17.8739], zoom: 6 });
                         }}

@@ -5,8 +5,16 @@ import { z } from "zod";
 
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  username: text("username").notNull().unique(),
+  phone: text("phone").notNull().unique(),
   password: text("password").notNull(),
+});
+
+export const insertUserSchema = createInsertSchema(users).extend({
+  phone: z.string().regex(/^9[0-9]{8}$/, "Número de telemóvel inválido. Use o formato 9xxxxxxxx."),
+  password: z.string().min(6, "A senha deve ter pelo menos 6 caracteres"),
+}).pick({
+  phone: true,
+  password: true,
 });
 
 export const plots = pgTable("plots", {
@@ -14,18 +22,13 @@ export const plots = pgTable("plots", {
   name: text("name").notNull(),
   crop: text("crop").notNull(),
   area: text("area").notNull(),
-  health: text("health").notNull(),
+  health: text("health"), // Made nullable
   lat: text("lat").notNull(),
   lng: text("lng").notNull(),
   altitude: text("altitude").notNull(),
-  boundaryPoints: text("boundary_points"), // Almazena como JSON string
+  boundaryPoints: text("boundary_points"), // Armazena como JSON string
   analysis: text("analysis"), // Resultado da análise Groq AI
   chatHistory: text("chat_history"), // JSON array de mensagens do chat
-});
-
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
 });
 
 export const insertPlotSchema = createInsertSchema(plots).omit({

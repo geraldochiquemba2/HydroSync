@@ -1,6 +1,7 @@
 
 import { MapContainer, TileLayer, Marker, Popup, Polygon, FeatureGroup, useMap } from 'react-leaflet';
 import { useEffect } from 'react';
+// @ts-ignore
 import { EditControl } from 'react-leaflet-draw';
 import { Settings, Map as MapIcon, Droplets, CloudSun, CloudRain } from 'lucide-react';
 import type { Zone } from '../../types';
