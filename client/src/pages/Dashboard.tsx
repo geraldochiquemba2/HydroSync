@@ -215,6 +215,19 @@ function MapController({ center, zoom }: { center: [number, number], zoom: numbe
 function AIChatBox({ plot, chatMutation, analyzeMutation }: { plot: Plot, chatMutation: any, analyzeMutation: any }) {
   const [chatMessage, setChatMessage] = useState("");
   const history = plot.chatHistory ? JSON.parse(plot.chatHistory) : [];
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const lastMessageRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      const isLastMessageAssistant = history.length > 0 && history[history.length - 1].role === "assistant";
+      if (isLastMessageAssistant && lastMessageRef.current) {
+        lastMessageRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      }
+    }
+  }, [history]);
 
   return (
     <div className="space-y-4">
@@ -222,15 +235,22 @@ function AIChatBox({ plot, chatMutation, analyzeMutation }: { plot: Plot, chatMu
         <MessageSquare className="w-3 h-3" /> Chat Agrosatelite IA
       </h4>
 
-      <div className="max-h-[300px] overflow-y-auto space-y-3 p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 custom-scrollbar">
+      <div
+        ref={scrollRef}
+        className="max-h-[300px] overflow-y-auto space-y-3 p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 custom-scrollbar"
+      >
         {history.length > 0 ? (
           history.map((m: any, idx: number) => (
-            <div key={idx} className={cn(
-              "p-3 rounded-2xl text-[11px] max-w-[90%] shadow-sm",
-              m.role === "user"
-                ? "bg-primary text-white ml-auto"
-                : "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-100 dark:border-slate-700"
-            )}>
+            <div
+              key={idx}
+              ref={idx === history.length - 1 ? lastMessageRef : null}
+              className={cn(
+                "p-3 rounded-2xl text-[11px] max-w-[90%] shadow-sm",
+                m.role === "user"
+                  ? "bg-primary text-white ml-auto"
+                  : "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-100 dark:border-slate-700"
+              )}
+            >
               <span className={cn(
                 "font-bold block mb-1 uppercase text-[9px] opacity-70",
                 m.role === "user" ? "text-white/80" : "text-primary"

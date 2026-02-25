@@ -23,6 +23,7 @@ export function GlobalAIChat({ weatherContext = [] }: GlobalAIChatProps) {
     const [message, setMessage] = useState("");
     const [history, setHistory] = useState<Message[]>([]);
     const scrollRef = useRef<HTMLDivElement>(null);
+    const lastMessageRef = useRef<HTMLDivElement>(null);
 
     const chatMutation = useMutation({
         mutationFn: async ({ message, history, weatherContext }: { message: string; history: Message[]; weatherContext: any[] }) => {
@@ -50,7 +51,15 @@ export function GlobalAIChat({ weatherContext = [] }: GlobalAIChatProps) {
 
     useEffect(() => {
         if (scrollRef.current) {
-            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+            const isLastMessageAssistant = history.length > 0 && history[history.length - 1].role === "assistant";
+
+            if (isLastMessageAssistant && lastMessageRef.current) {
+                // Se for resposta da IA, rola para o topo da mensagem
+                lastMessageRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } else {
+                // Se for mensagem do usuário ou abertura, rola para o fim
+                scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+            }
         }
     }, [history, isOpen]);
 
@@ -105,32 +114,32 @@ export function GlobalAIChat({ weatherContext = [] }: GlobalAIChatProps) {
                                         </div>
                                     )}
 
-                                    {history.map((msg, idx) => (
-                                        <div
-                                            key={idx}
-                                            className={cn(
-                                                "flex flex-col max-w-[85%] animate-in fade-in slide-in-from-bottom-1 duration-300",
-                                                msg.role === "user" ? "ml-auto items-end" : "mr-auto items-start"
-                                            )}
-                                        >
-                                            <div className={cn(
-                                                "flex items-center gap-1.5 mb-1 opacity-50",
-                                                msg.role === "user" ? "flex-reverse" : ""
-                                            )}>
-                                                {msg.role === "assistant" ? <Bot className="w-3 h-3" /> : <User className="w-3 h-3" />}
-                                                <span className="text-[9px] font-bold uppercase tracking-tight">
-                                                    {msg.role === "assistant" ? "AgroSat IA" : "Produtor"}
-                                                </span>
-                                            </div>
-                                            <div className={cn(
-                                                "p-3 rounded-2xl text-[12px] leading-relaxed shadow-sm",
-                                                msg.role === "user"
-                                                    ? "bg-primary text-white rounded-tr-none"
-                                                    : "bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-tl-none"
-                                            )}>
-                                                {msg.content}
-                                            </div>
+                                    <div
+                                        key={idx}
+                                        ref={idx === history.length - 1 ? lastMessageRef : null}
+                                        className={cn(
+                                            "flex flex-col max-w-[85%] animate-in fade-in slide-in-from-bottom-1 duration-300",
+                                            msg.role === "user" ? "ml-auto items-end" : "mr-auto items-start"
+                                        )}
+                                    >
+                                        <div className={cn(
+                                            "flex items-center gap-1.5 mb-1 opacity-50",
+                                            msg.role === "user" ? "flex-reverse" : ""
+                                        )}>
+                                            {msg.role === "assistant" ? <Bot className="w-3 h-3" /> : <User className="w-3 h-3" />}
+                                            <span className="text-[9px] font-bold uppercase tracking-tight">
+                                                {msg.role === "assistant" ? "AgroSat IA" : "Produtor"}
+                                            </span>
                                         </div>
+                                        <div className={cn(
+                                            "p-3 rounded-2xl text-[12px] leading-relaxed shadow-sm",
+                                            msg.role === "user"
+                                                ? "bg-primary text-white rounded-tr-none"
+                                                : "bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-tl-none"
+                                        )}>
+                                            {msg.content}
+                                        </div>
+                                    </div>
                                     ))}
 
                                     {chatMutation.isPending && (
