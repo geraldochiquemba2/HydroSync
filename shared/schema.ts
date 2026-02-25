@@ -37,6 +37,7 @@ export const plots = pgTable("plots", {
 
 export const insertPlotSchema = createInsertSchema(plots).omit({
   id: true,
+  userId: true, // Injetado pelo servidor a partir da sessão
 });
 
 export type InsertPlot = z.infer<typeof insertPlotSchema>;

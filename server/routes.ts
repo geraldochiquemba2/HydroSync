@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { insertPlotSchema } from "@shared/schema";
 import { getPlotWeather, clearWeatherCache } from "./services/weatherService";
 import { estimateSoilTelemetry } from "./services/soilSimulationService";
 import { setupAuth } from "./auth";
@@ -22,8 +23,17 @@ export async function registerRoutes(
 
   app.post("/api/plots", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const plot = await storage.createPlot({ ...req.body, userId: req.user!.id });
-    res.json(plot);
+    try {
+      const plotData = insertPlotSchema.parse(req.body);
+      const plot = await storage.createPlot({
+        ...plotData,
+        userId: req.user!.id,
+        health: plotData.health || (Math.floor(Math.random() * (95 - 75 + 1)) + 75).toString()
+      });
+      res.json(plot);
+    } catch (err: any) {
+      res.status(400).json({ message: "Dados inválidos", detail: err.errors || err.message });
+    }
   });
 
   app.delete("/api/plots/:id", async (req, res) => {
