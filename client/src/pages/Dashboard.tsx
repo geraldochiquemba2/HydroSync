@@ -584,10 +584,21 @@ export default function Dashboard() {
     queryKey: ["/api/plots"],
   });
 
-  const plots: Plot[] = dbPlots.map((p: any) => ({
-    ...p,
-    boundaryPoints: p.boundaryPoints ? JSON.parse(p.boundaryPoints) : undefined
-  }));
+  const plots: Plot[] = dbPlots.map((p: any) => {
+    let boundaryPoints = undefined;
+    try {
+      if (p.boundaryPoints && typeof p.boundaryPoints === 'string' && p.boundaryPoints.trim() !== '') {
+        boundaryPoints = JSON.parse(p.boundaryPoints);
+      }
+    } catch (e) {
+      console.error("Erro ao processar pontos do limite para o talhão:", p.id, e);
+    }
+
+    return {
+      ...p,
+      boundaryPoints: Array.isArray(boundaryPoints) ? boundaryPoints : undefined
+    };
+  });
 
   const createPlotMutation = useMutation({
     mutationFn: async (plot: InsertPlot) => {
@@ -1290,7 +1301,7 @@ export default function Dashboard() {
                   {plots.map(plot => (
                     <Card key={plot.id} className="glass-panel overflow-hidden group relative">
                       <div className="h-32 bg-slate-200 relative overflow-hidden">
-                        {plot.lat && plot.lng ? (
+                        {plot.lat && plot.lng && !isNaN(Number(plot.lat)) && !isNaN(Number(plot.lng)) ? (
                           <MapContainer
                             center={[Number(plot.lat), Number(plot.lng)]}
                             zoom={13}
