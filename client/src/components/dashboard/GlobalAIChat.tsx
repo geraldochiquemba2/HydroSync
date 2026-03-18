@@ -23,6 +23,7 @@ interface GlobalAIChatProps {
 export function GlobalAIChat({ weatherContext = [] }: GlobalAIChatProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [message, setMessage] = useState("");
+    const [isConversing, setIsConversing] = useState(false);
     const [history, setHistory] = useState<Message[]>([]);
     const [showVoicePicker, setShowVoicePicker] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -32,7 +33,7 @@ export function GlobalAIChat({ weatherContext = [] }: GlobalAIChatProps) {
 
     const { isListening, transcript, startListening, stopListening, isSupported: isSTTSupported } = useSpeechRecognition(
         () => {
-            if (isSpeaking) stop();
+            // Removed to prevent AI from interrupting itself when its own voice leaks into the mic
         },
         (finalText) => {
             const msg = finalText.trim();
@@ -44,6 +45,29 @@ export function GlobalAIChat({ weatherContext = [] }: GlobalAIChatProps) {
             }
         }
     );
+
+    // Conversational Mode Manager: Mutes mic while AI is "thinking" or "speaking" to avoid echoes and loops
+    useEffect(() => {
+        if (!isConversing) {
+            if (isListening) stopListening();
+            return;
+        }
+
+        if (isSpeaking || chatMutation.isPending) {
+            if (isListening) stopListening();
+        } else {
+            if (!isListening) startListening();
+        }
+    }, [isConversing, isSpeaking, chatMutation.isPending, isListening, startListening, stopListening]);
+
+    const toggleConversing = () => {
+        if (isConversing) {
+            setIsConversing(false);
+            if (isSpeaking) stop();
+        } else {
+            setIsConversing(true);
+        }
+    };
 
     useEffect(() => {
         if (isListening) {
@@ -300,13 +324,12 @@ export function GlobalAIChat({ weatherContext = [] }: GlobalAIChatProps) {
                                         <Button
                                             type="button"
                                             size="icon"
-                                            variant={isListening ? "destructive" : "secondary"}
-                                            className={cn("h-10 w-10 shrink-0 rounded-xl transition-all", isListening ? "animate-pulse" : "")}
-                                            onClick={() => isListening ? stopListening() : startListening()}
-                                            disabled={chatMutation.isPending}
-                                            title={isListening ? "Parar de ouvir (e enviar)" : "Falar com a IA"}
+                                            variant={isConversing ? "destructive" : "secondary"}
+                                            className={cn("h-10 w-10 shrink-0 rounded-xl transition-all", isConversing ? "animate-pulse" : "")}
+                                            onClick={toggleConversing}
+                                            title={isConversing ? "Desligar Modo Conversa" : "Ativar Modo Conversa Contínua"}
                                         >
-                                            {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                                            {isConversing ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
                                         </Button>
                                     )}
                                     <Button

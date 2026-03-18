@@ -36,7 +36,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetClose } from "@/components/ui/sheet";
 import { GlobalAIChat } from "@/components/dashboard/GlobalAIChat";
-import { useSpeech } from "@/hooks/use-speech";
+import { useSpeech, getGlobalSelectedVoice } from "@/hooks/use-speech";
 import { useSpeechRecognition } from "@/hooks/use-speech-recognition";
 
 // Assets generated
@@ -220,6 +220,7 @@ function MapController({ center, zoom }: { center: [number, number], zoom: numbe
 
 function AIChatBox({ plot, chatMutation, analyzeMutation }: { plot: Plot, chatMutation: any, analyzeMutation: any }) {
   const [chatMessage, setChatMessage] = useState("");
+  const [isConversing, setIsConversing] = useState(false);
   const history = plot.chatHistory ? JSON.parse(plot.chatHistory) : [];
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastMessageRef = useRef<HTMLDivElement>(null);
@@ -227,7 +228,7 @@ function AIChatBox({ plot, chatMutation, analyzeMutation }: { plot: Plot, chatMu
 
   const { isListening, transcript, startListening, stopListening, isSupported: isSTTSupported } = useSpeechRecognition(
     () => {
-      if (isSpeaking) stop();
+      // Removed self-interruption for feedback loop prevention
     },
     (finalText) => {
       const msg = finalText.trim();
@@ -237,6 +238,29 @@ function AIChatBox({ plot, chatMutation, analyzeMutation }: { plot: Plot, chatMu
       }
     }
   );
+
+  // Conversational Mode Manager
+  useEffect(() => {
+    if (!isConversing) {
+      if (isListening) stopListening();
+      return;
+    }
+
+    if (isSpeaking || chatMutation.isPending) {
+      if (isListening) stopListening();
+    } else {
+      if (!isListening) startListening();
+    }
+  }, [isConversing, isSpeaking, chatMutation.isPending, isListening, startListening, stopListening]);
+
+  const toggleConversing = () => {
+    if (isConversing) {
+      setIsConversing(false);
+      if (isSpeaking) stop();
+    } else {
+      setIsConversing(true);
+    }
+  };
 
   useEffect(() => {
     if (isListening) {
@@ -340,13 +364,13 @@ function AIChatBox({ plot, chatMutation, analyzeMutation }: { plot: Plot, chatMu
           <Button
             type="button"
             size="icon"
-            variant={isListening ? "destructive" : "secondary"}
-            className={cn("h-10 w-10 shrink-0 rounded-xl transition-all", isListening ? "animate-pulse" : "")}
-            onClick={() => isListening ? stopListening() : startListening()}
+            variant={isConversing ? "destructive" : "secondary"}
+            className={cn("h-10 w-10 shrink-0 rounded-xl transition-all", isConversing ? "animate-pulse" : "")}
+            onClick={toggleConversing}
             disabled={chatMutation.isPending}
-            title={isListening ? "Parar de ouvir" : "Falar com a IA"}
+            title={isConversing ? "Desligar Modo Conversa" : "Ativar Modo Conversa Contínua"}
           >
-            {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+            {isConversing ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
           </Button>
         )}
         <Button
@@ -637,7 +661,13 @@ export default function Dashboard() {
           const text = data.response ? data.response.toString().replace(/[*_#`\[\]()]/g, "") : "";
           if (!text) return;
           const utterance = new SpeechSynthesisUtterance(text);
-          utterance.lang = "pt-PT";
+          const voice = getGlobalSelectedVoice();
+          if (voice) {
+            utterance.voice = voice.voice;
+            utterance.lang = voice.lang;
+          } else {
+            utterance.lang = "pt-PT";
+          }
           window.speechSynthesis.cancel();
           window.speechSynthesis.speak(utterance);
         }, 300);

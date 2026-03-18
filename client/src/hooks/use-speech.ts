@@ -18,14 +18,39 @@ interface UseSpeechReturn {
     currentText: string | null;
 }
 
+let globalSelectedVoice: SpeechVoice | null = null;
+let voiceListeners: Array<(voice: SpeechVoice | null) => void> = [];
+
+function setGlobalSelectedVoice(voice: SpeechVoice | null) {
+    globalSelectedVoice = voice;
+    voiceListeners.forEach(listener => listener(voice));
+}
+
+export function getGlobalSelectedVoice() {
+    return globalSelectedVoice;
+}
+
 export function useSpeech(): UseSpeechReturn {
     const [voices, setVoices] = useState<SpeechVoice[]>([]);
-    const [selectedVoice, setSelectedVoice] = useState<SpeechVoice | null>(null);
+    const [selectedVoice, setLocalSelectedVoice] = useState<SpeechVoice | null>(globalSelectedVoice);
     const [isSpeaking, setIsSpeaking] = useState(false);
     const [currentText, setCurrentText] = useState<string | null>(null);
     const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
     const isSupported = typeof window !== "undefined" && "speechSynthesis" in window;
+
+    // Sync with global voice
+    useEffect(() => {
+        const listener = (v: SpeechVoice | null) => setLocalSelectedVoice(v);
+        voiceListeners.push(listener);
+        return () => {
+            voiceListeners = voiceListeners.filter(l => l !== listener);
+        };
+    }, []);
+
+    const setSelectedVoice = useCallback((voice: SpeechVoice) => {
+        setGlobalSelectedVoice(voice);
+    }, []);
 
     const loadVoices = useCallback(() => {
         if (!isSupported) return;
@@ -39,7 +64,6 @@ export function useSpeech(): UseSpeechReturn {
             isPortuguese: v.lang.startsWith("pt"),
         }));
 
-        // Sort: Portuguese voices first, then by name
         mapped.sort((a, b) => {
             if (a.isPortuguese && !b.isPortuguese) return -1;
             if (!a.isPortuguese && b.isPortuguese) return 1;
@@ -48,14 +72,14 @@ export function useSpeech(): UseSpeechReturn {
 
         setVoices(mapped);
 
-        // Auto-select the best Portuguese voice
-        const ptBest =
-            mapped.find((v) => v.lang === "pt-PT") ||
-            mapped.find((v) => v.lang === "pt-BR") ||
-            mapped.find((v) => v.isPortuguese) ||
-            mapped[0];
-
-        setSelectedVoice((prev) => prev ?? ptBest ?? null);
+        if (!globalSelectedVoice) {
+            const ptBest =
+                mapped.find((v) => v.lang === "pt-PT") ||
+                mapped.find((v) => v.lang === "pt-BR") ||
+                mapped.find((v) => v.isPortuguese) ||
+                mapped[0];
+            setGlobalSelectedVoice(ptBest ?? null);
+        }
     }, [isSupported]);
 
     useEffect(() => {
