@@ -31,6 +31,27 @@ export function GlobalAIChat({ weatherContext = [] }: GlobalAIChatProps) {
     const { toast } = useToast();
     const { speak, stop, isSpeaking, isSupported, voices, selectedVoice, setSelectedVoice, currentText } = useSpeech();
 
+    const chatMutation = useMutation({
+        mutationFn: async ({ message, history, weatherContext }: { message: string; history: Message[]; weatherContext: any[] }) => {
+            const res = await apiRequest("POST", "/api/ai/chat", { message, history, weatherContext });
+            return res.json();
+        },
+        onSuccess: (data) => {
+            setHistory((prev) => [...prev, { role: "assistant", content: data.response }]);
+            // Auto speak the response
+            if (isSupported) {
+                setTimeout(() => speak(data.response), 300); // slight delay allowing UI to settle
+            }
+        },
+        onError: (error: Error) => {
+            toast({
+                title: "Erro no Assistente IA",
+                description: error.message || "Verifique sua conexão ou tente mais tarde.",
+                variant: "destructive"
+            });
+        }
+    });
+
     const { isListening, transcript, startListening, stopListening, isSupported: isSTTSupported } = useSpeechRecognition(
         () => {
             // Removed to prevent AI from interrupting itself when its own voice leaks into the mic
@@ -74,27 +95,6 @@ export function GlobalAIChat({ weatherContext = [] }: GlobalAIChatProps) {
             setMessage(transcript);
         }
     }, [transcript, isListening]);
-
-    const chatMutation = useMutation({
-        mutationFn: async ({ message, history, weatherContext }: { message: string; history: Message[]; weatherContext: any[] }) => {
-            const res = await apiRequest("POST", "/api/ai/chat", { message, history, weatherContext });
-            return res.json();
-        },
-        onSuccess: (data) => {
-            setHistory((prev) => [...prev, { role: "assistant", content: data.response }]);
-            // Auto speak the response
-            if (isSupported) {
-                setTimeout(() => speak(data.response), 300); // slight delay allowing UI to settle
-            }
-        },
-        onError: (error: Error) => {
-            toast({
-                title: "Erro no Assistente IA",
-                description: error.message || "Verifique sua conexão ou tente mais tarde.",
-                variant: "destructive"
-            });
-        }
-    });
 
     const handleSendMessage = () => {
         if (!message.trim() || chatMutation.isPending) return;
