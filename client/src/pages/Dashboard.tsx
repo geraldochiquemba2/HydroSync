@@ -38,6 +38,9 @@ import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetClose 
 import { GlobalAIChat } from "@/components/dashboard/GlobalAIChat";
 import { useSpeech, getGlobalSelectedVoice } from "@/hooks/use-speech";
 import { useSpeechRecognition } from "@/hooks/use-speech-recognition";
+import { useAuth } from "@/hooks/use-auth";
+import { CreditDossier } from "@/components/dashboard/CreditDossier";
+import { CreditDossier } from "@/components/dashboard/CreditDossier";
 
 // Assets generated
 import satelliteFarm from "@/assets/images/satellite-farm.png";
@@ -545,7 +548,9 @@ function PlotSoilMoistureBadge({ plotId }: { plotId: string }) {
 
 export default function Dashboard() {
   const [location, setLocation] = useLocation();
+  const { user } = useAuth();
   const { speak } = useSpeech();
+  const [viewingDossierPlot, setViewingDossierPlot] = useState<DbPlot | null>(null);
   const [match, params] = useRoute("/dashboard/:tab");
   const activeTab = (params?.tab === "climate" || params?.tab === "plots") ? params.tab : "climate";
 
@@ -1346,19 +1351,31 @@ export default function Dashboard() {
                         {/* Real-time soil moisture per plot */}
                         <PlotSoilMoistureBadge plotId={plot.id} />
 
-                        <div className="flex gap-2 mt-2">
+                        <div className="flex flex-col gap-2 mt-2 w-full">
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex-1 group-hover:bg-primary group-hover:text-white transition-colors gap-2"
+                              onClick={() => viewOnMap(plot)}
+                            >
+                              <Eye className="w-4 h-4" /> Detalhes
+                            </Button>
+
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              className="flex-1 bg-blue-600/10 text-blue-600 hover:bg-blue-600/20 border border-blue-200 gap-2 font-bold"
+                              onClick={() => setViewingDossierPlot(plot as DbPlot)}
+                            >
+                              <FileText className="w-4 h-4" /> Dossiê
+                            </Button>
+                          </div>
+
                           <Button
                             variant="outline"
                             size="sm"
-                            className="flex-1 group-hover:bg-primary group-hover:text-white transition-colors"
-                            onClick={() => viewOnMap(plot)}
-                          >
-                            <Eye className="w-4 h-4 mr-2" /> Detalhes
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="text-rose-500 border-rose-100 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200"
+                            className="w-full text-rose-500 border-rose-100 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 h-8 text-[10px] uppercase font-bold"
                             onClick={(e) => {
                               e.stopPropagation();
                               if (confirm("Tem certeza que deseja excluir este talhão?")) {
@@ -1366,7 +1383,7 @@ export default function Dashboard() {
                               }
                             }}
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-3 h-3 mr-1" /> Remover Talhão
                           </Button>
                         </div>
                       </CardContent>
@@ -1400,6 +1417,20 @@ export default function Dashboard() {
           description: p.weather.description
         }))}
       />
+
+      <Dialog open={!!viewingDossierPlot} onOpenChange={(open) => !open && setViewingDossierPlot(null)}>
+        <DialogContent className="sm:max-w-[1000px] p-8 max-h-[90vh] overflow-y-auto bg-white border-0 shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black text-slate-900 tracking-tight uppercase">Dossiê de Crédito Agrícola</DialogTitle>
+            <DialogDescription className="text-slate-500 font-medium">
+              Pré-visualização do documento técnico para apresentação ao Banco BAI / FADA.
+            </DialogDescription>
+          </DialogHeader>
+          {viewingDossierPlot && user && (
+            <CreditDossier plot={viewingDossierPlot} user={user} />
+          )}
+        </DialogContent>
+      </Dialog>
     </div >
   );
 }
