@@ -234,6 +234,7 @@ function AIChatBox({ plot, chatMutation, analyzeMutation }: { plot: Plot, chatMu
       const msg = finalText.trim();
       if (msg && !chatMutation.isPending) {
         setChatMessage("");
+        setIsConversing(false);
         chatMutation.mutate({ id: plot.id, message: msg });
       }
     }

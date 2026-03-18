@@ -62,6 +62,7 @@ export function GlobalAIChat({ weatherContext = [] }: GlobalAIChatProps) {
                 const newHistory: Message[] = [...history, { role: "user", content: msg }];
                 setHistory(newHistory);
                 setMessage("");
+                setIsConversing(false);
                 chatMutation.mutate({ message: msg, history: newHistory, weatherContext });
             }
         }
