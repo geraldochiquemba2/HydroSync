@@ -544,6 +544,7 @@ function PlotSoilMoistureBadge({ plotId }: { plotId: string }) {
 
 export default function Dashboard() {
   const [location, setLocation] = useLocation();
+  const { speak } = useSpeech();
   const [match, params] = useRoute("/dashboard/:tab");
   const activeTab = (params?.tab === "climate" || params?.tab === "plots") ? params.tab : "climate";
 
@@ -655,21 +656,12 @@ export default function Dashboard() {
         title: "IA Respondeu",
         description: "Nova mensagem técnica disponível.",
       });
-      // Try to read Aloud using the browser's native speech synthesis to avoid passing hooks
+      // Use the global speak function to ensure microphone suspension works across components
       if (typeof window !== "undefined" && window.speechSynthesis) {
         setTimeout(() => {
           const text = data.response ? data.response.toString().replace(/[*_#`\[\]()]/g, "") : "";
           if (!text) return;
-          const utterance = new SpeechSynthesisUtterance(text);
-          const voice = getGlobalSelectedVoice();
-          if (voice) {
-            utterance.voice = voice.voice;
-            utterance.lang = voice.lang;
-          } else {
-            utterance.lang = "pt-PT";
-          }
-          window.speechSynthesis.cancel();
-          window.speechSynthesis.speak(utterance);
+          speak(text);
         }, 300);
       }
     },

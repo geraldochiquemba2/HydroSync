@@ -20,10 +20,17 @@ interface UseSpeechReturn {
 
 let globalSelectedVoice: SpeechVoice | null = null;
 let voiceListeners: Array<(voice: SpeechVoice | null) => void> = [];
+let globalIsSpeaking: boolean = false;
+let isSpeakingListeners: Array<(speaking: boolean) => void> = [];
 
 function setGlobalSelectedVoice(voice: SpeechVoice | null) {
     globalSelectedVoice = voice;
     voiceListeners.forEach(listener => listener(voice));
+}
+
+function setGlobalIsSpeaking(speaking: boolean) {
+    globalIsSpeaking = speaking;
+    isSpeakingListeners.forEach(listener => listener(speaking));
 }
 
 export function getGlobalSelectedVoice() {
@@ -33,18 +40,23 @@ export function getGlobalSelectedVoice() {
 export function useSpeech(): UseSpeechReturn {
     const [voices, setVoices] = useState<SpeechVoice[]>([]);
     const [selectedVoice, setLocalSelectedVoice] = useState<SpeechVoice | null>(globalSelectedVoice);
-    const [isSpeaking, setIsSpeaking] = useState(false);
+    const [isSpeaking, setLocalIsSpeaking] = useState<boolean>(globalIsSpeaking);
     const [currentText, setCurrentText] = useState<string | null>(null);
     const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
     const isSupported = typeof window !== "undefined" && "speechSynthesis" in window;
 
-    // Sync with global voice
+    // Sync with global voice and isSpeaking
     useEffect(() => {
-        const listener = (v: SpeechVoice | null) => setLocalSelectedVoice(v);
-        voiceListeners.push(listener);
+        const voiceListener = (v: SpeechVoice | null) => setLocalSelectedVoice(v);
+        const speakingListener = (s: boolean) => setLocalIsSpeaking(s);
+
+        voiceListeners.push(voiceListener);
+        isSpeakingListeners.push(speakingListener);
+
         return () => {
-            voiceListeners = voiceListeners.filter(l => l !== listener);
+            voiceListeners = voiceListeners.filter(l => l !== voiceListener);
+            isSpeakingListeners = isSpeakingListeners.filter(l => l !== speakingListener);
         };
     }, []);
 
@@ -123,15 +135,17 @@ export function useSpeech(): UseSpeechReturn {
             }
 
             utterance.onstart = () => {
-                setIsSpeaking(true);
-                setCurrentText(text);
+                setLocalIsSpeaking(true);
+                setGlobalIsSpeaking(true);
+                setCurrentText(text); // Keep setCurrentText(text) here
             };
             utterance.onend = () => {
-                setIsSpeaking(false);
+                setGlobalIsSpeaking(false);
                 setCurrentText(null);
             };
-            utterance.onerror = () => {
-                setIsSpeaking(false);
+            utterance.onerror = (e) => {
+                console.error("Speech error", e);
+                setGlobalIsSpeaking(false);
                 setCurrentText(null);
             };
 
@@ -144,7 +158,7 @@ export function useSpeech(): UseSpeechReturn {
     const stop = useCallback(() => {
         if (!isSupported) return;
         window.speechSynthesis.cancel();
-        setIsSpeaking(false);
+        setGlobalIsSpeaking(false);
         setCurrentText(null);
     }, [isSupported]);
 
