@@ -11,7 +11,7 @@ import React, { useState, useEffect, useRef } from "react";
 import {
   Droplets, Map, Activity, CloudRain,
   Settings, User, Bell, ChevronRight, Menu, MapPin,
-  Cloud, CloudLightning, Waves, Layers, Plus, Trash2, X, MessageSquare, Send, RefreshCw, CloudSun, Loader2,
+  Cloud, CloudLightning, Waves, Layers, Plus, Trash2, X, MessageSquare, Send, RefreshCw, CloudSun, Loader2, FileText,
   Sprout, Sun, Wind, ThermometerSun, AlertTriangle, Sunrise, Eye, Gauge, Moon, Volume2, VolumeX, Mic, MicOff
 } from "lucide-react";
 import { clsx, type ClassValue } from "clsx";
