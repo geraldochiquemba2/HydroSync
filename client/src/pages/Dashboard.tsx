@@ -584,11 +584,7 @@ export default function Dashboard() {
     queryKey: ["/api/plots"],
   });
 
-  if (plotsError) {
-    console.error("Erro na query /api/plots:", plotsError);
-  }
 
-  console.log("Dashboard Render - activeTab:", activeTab, "dbPlots length:", dbPlots.length);
 
   const plots: Plot[] = (Array.isArray(dbPlots) ? dbPlots : []).map((p: any) => {
     let boundaryPoints = undefined;
@@ -606,9 +602,7 @@ export default function Dashboard() {
     };
   });
 
-  if (activeTab === "plots") {
-    console.log("Processados", plots.length, "talhões para exibição.");
-  }
+
 
   const createPlotMutation = useMutation({
     mutationFn: async (plot: InsertPlot) => {
