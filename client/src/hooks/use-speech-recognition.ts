@@ -8,16 +8,17 @@ interface UseSpeechRecognitionReturn {
     isSupported: boolean;
 }
 
-export function useSpeechRecognition(onSpeechStart?: () => void): UseSpeechRecognitionReturn {
+export function useSpeechRecognition(onSpeechStart?: () => void, onFinalResult?: (text: string) => void): UseSpeechRecognitionReturn {
     const [isListening, setIsListening] = useState(false);
     const [transcript, setTranscript] = useState("");
     const recognitionRef = useRef<any>(null);
     const onSpeechStartRef = useRef(onSpeechStart);
+    const onFinalResultRef = useRef(onFinalResult);
 
-    // Keep the latest callback without triggering effect restarts
     useEffect(() => {
         onSpeechStartRef.current = onSpeechStart;
-    }, [onSpeechStart]);
+        onFinalResultRef.current = onFinalResult;
+    }, [onSpeechStart, onFinalResult]);
 
     const isSupported = typeof window !== "undefined" && ("SpeechRecognition" in window || "webkitSpeechRecognition" in window);
 
@@ -28,14 +29,12 @@ export function useSpeechRecognition(onSpeechStart?: () => void): UseSpeechRecog
         const recognition = new SpeechRecognition();
 
         recognition.lang = "pt-PT";
-        // To allow natural typing/capture we can use continuous=false,
-        // but to ensure it stays open while speaking, we might use true,
-        // though false works well for "push/click to talk"
-        recognition.continuous = false;
+        recognition.continuous = true; // Keeps listening until manually stopped
         recognition.interimResults = true;
 
         recognition.onstart = () => {
             setIsListening(true);
+            setTranscript("");
         };
 
         recognition.onaudiostart = () => {
@@ -43,16 +42,28 @@ export function useSpeechRecognition(onSpeechStart?: () => void): UseSpeechRecog
         };
 
         recognition.onresult = (event: any) => {
-            let currentTranscript = "";
+            let currentInterim = "";
+            let currentFinal = "";
+
             for (let i = event.resultIndex; i < event.results.length; i++) {
-                currentTranscript += event.results[i][0].transcript;
+                const chunk = event.results[i];
+                if (chunk.isFinal) {
+                    currentFinal += chunk[0].transcript;
+                } else {
+                    currentInterim += chunk[0].transcript;
+                }
             }
-            setTranscript(currentTranscript);
+
+            setTranscript(currentInterim);
+
+            if (currentFinal.trim() && onFinalResultRef.current) {
+                onFinalResultRef.current(currentFinal.trim());
+            }
         };
 
         recognition.onerror = (event: any) => {
             console.error("Speech recognition error", event.error);
-            if (event.error !== 'no-speech') {
+            if (event.error !== 'no-speech' && event.error !== 'aborted') {
                 setIsListening(false);
             }
         };
@@ -65,7 +76,6 @@ export function useSpeechRecognition(onSpeechStart?: () => void): UseSpeechRecog
 
         return () => {
             if (recognitionRef.current) {
-                // Avoid aborting actively listening instance on unmount unless needed, but cleanup is essential
                 recognitionRef.current.abort();
             }
         };

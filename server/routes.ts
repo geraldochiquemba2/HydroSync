@@ -174,6 +174,8 @@ export async function registerRoutes(
       - Calendário Local: ${agronomicContext.calendar}
       - Orientações Específicas: ${agronomicContext.technicalTips}
       
+      INSTRUÇÃO OBRIGATÓRIA SOBRE LOCALIZAÇÃO: Se questionado sobre províncias, município ou localização, você DEVE afirmar a região correspondente às coordenadas de forma assertiva e exata. NUNCA diga que tem informações limitadas, NUNCA use a palavra "aproximadamente" e NUNCA peça desculpas. Assuma a sua dedução geográfica como a localização oficial e absoluta.
+      
       Responda em Português de Angola. Seja técnico e use os dados acima para responder às dúvidas do agricultor de forma supra-contextualizada.`;
 
       if (!process.env.GROQ_API_KEY) {
@@ -252,6 +254,8 @@ export async function registerRoutes(
       2. Você conhece as pragas e necessidades de cada fase de crescimento citada acima.
       3. Você cruza o clima local com a saúde do talhão para dar avisos proativos.
       4. Você tem conhecimento preciso da localização dos talhões usando as coordenadas de latitude, longitude e província para responder questões sobre localização.
+      
+      INSTRUÇÃO OBRIGATÓRIA SOBRE LOCALIZAÇÃO: Quando o agricultor perguntar sobre a localização ou província de qualquer talhão, você DEVE afirmar a região correspondente às coordenadas de forma assertiva e direta. NUNCA diga que os dados são "aproximados", NUNCA afirme que tem informações limitadas e NUNCA peça desculpas.
       
       Responda em Português de Angola. Seja técnico, sênior e extremamente preciso nas recomendações.`;
 

@@ -225,27 +225,24 @@ function AIChatBox({ plot, chatMutation, analyzeMutation }: { plot: Plot, chatMu
   const lastMessageRef = useRef<HTMLDivElement>(null);
   const { speak, stop, isSpeaking, isSupported, currentText } = useSpeech();
 
-  const { isListening, transcript, startListening, stopListening, isSupported: isSTTSupported } = useSpeechRecognition(() => {
-    if (isSpeaking) stop();
-  });
-
-  useEffect(() => {
-    if (isListening && transcript) {
-      setChatMessage(transcript);
-    }
-  }, [transcript, isListening]);
-
-  const previousIsListening = useRef(false);
-  useEffect(() => {
-    if (previousIsListening.current && !isListening && transcript.trim().length > 0) {
-      const msg = transcript.trim();
+  const { isListening, transcript, startListening, stopListening, isSupported: isSTTSupported } = useSpeechRecognition(
+    () => {
+      if (isSpeaking) stop();
+    },
+    (finalText) => {
+      const msg = finalText.trim();
       if (msg && !chatMutation.isPending) {
         setChatMessage("");
         chatMutation.mutate({ id: plot.id, message: msg });
       }
     }
-    previousIsListening.current = isListening;
-  }, [isListening, transcript, plot.id, chatMutation]);
+  );
+
+  useEffect(() => {
+    if (isListening) {
+      setChatMessage(transcript);
+    }
+  }, [transcript, isListening]);
 
   useEffect(() => {
     if (scrollRef.current) {

@@ -30,20 +30,12 @@ export function GlobalAIChat({ weatherContext = [] }: GlobalAIChatProps) {
     const { toast } = useToast();
     const { speak, stop, isSpeaking, isSupported, voices, selectedVoice, setSelectedVoice, currentText } = useSpeech();
 
-    const { isListening, transcript, startListening, stopListening, isSupported: isSTTSupported } = useSpeechRecognition(() => {
-        if (isSpeaking) stop();
-    });
-
-    useEffect(() => {
-        if (isListening && transcript) {
-            setMessage(transcript);
-        }
-    }, [transcript, isListening]);
-
-    const previousIsListening = useRef(false);
-    useEffect(() => {
-        if (previousIsListening.current && !isListening && transcript.trim().length > 0) {
-            const msg = transcript.trim();
+    const { isListening, transcript, startListening, stopListening, isSupported: isSTTSupported } = useSpeechRecognition(
+        () => {
+            if (isSpeaking) stop();
+        },
+        (finalText) => {
+            const msg = finalText.trim();
             if (msg && !chatMutation.isPending) {
                 const newHistory: Message[] = [...history, { role: "user", content: msg }];
                 setHistory(newHistory);
@@ -51,8 +43,13 @@ export function GlobalAIChat({ weatherContext = [] }: GlobalAIChatProps) {
                 chatMutation.mutate({ message: msg, history: newHistory, weatherContext });
             }
         }
-        previousIsListening.current = isListening;
-    }, [isListening, transcript, history, weatherContext]);
+    );
+
+    useEffect(() => {
+        if (isListening) {
+            setMessage(transcript);
+        }
+    }, [transcript, isListening]);
 
     const chatMutation = useMutation({
         mutationFn: async ({ message, history, weatherContext }: { message: string; history: Message[]; weatherContext: any[] }) => {
