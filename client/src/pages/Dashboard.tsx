@@ -40,7 +40,7 @@ import { useSpeech, getGlobalSelectedVoice } from "@/hooks/use-speech";
 import { useSpeechRecognition } from "@/hooks/use-speech-recognition";
 import { useAuth } from "@/hooks/use-auth";
 import { CreditDossier } from "@/components/dashboard/CreditDossier";
-import { CreditDossier } from "@/components/dashboard/CreditDossier";
+import { StrategicRecommendations } from "@/components/dashboard/StrategicRecommendations";
 
 // Assets generated
 import satelliteFarm from "@/assets/images/satellite-farm.png";
@@ -552,11 +552,11 @@ export default function Dashboard() {
   const { speak } = useSpeech();
   const [viewingDossierPlot, setViewingDossierPlot] = useState<DbPlot | null>(null);
   const [match, params] = useRoute("/dashboard/:tab");
-  const activeTab = (params?.tab === "climate" || params?.tab === "plots") ? params.tab : "climate";
+  const activeTab = (params?.tab === "climate" || params?.tab === "plots" || params?.tab === "estrategia") ? params.tab : "climate";
 
   // Redirect to climate if on an invalid or removed tab
   useEffect(() => {
-    if (!params?.tab || (params.tab !== "climate" && params.tab !== "plots")) {
+    if (!params?.tab || (params.tab !== "climate" && params.tab !== "plots" && params.tab !== "estrategia")) {
       setLocation("/dashboard/climate");
     }
   }, [params?.tab, setLocation]);
@@ -775,7 +775,7 @@ export default function Dashboard() {
   return (
     <div className="flex h-screen bg-brand-white font-sans overflow-hidden">
       <Sidebar
-        activeTab={activeTab as 'climate' | 'plots'}
+        activeTab={activeTab as 'climate' | 'plots' | 'estrategia'}
         setActiveTab={(tab) => setLocation(`/dashboard/${tab}`)}
         onNavigate={(view) => setLocation(view === 'dashboard' ? '/dashboard' : view === 'landing' ? '/' : `/${view}`)}
         isOpen={isSidebarOpen}
@@ -1396,6 +1396,10 @@ export default function Dashboard() {
                   )}
                 </div>
               </div>
+            )}
+
+            {activeTab === "estrategia" && (
+              <StrategicRecommendations />
             )}
 
           </div>

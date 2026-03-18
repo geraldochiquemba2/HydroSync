@@ -8,13 +8,14 @@ import {
     LayoutDashboard,
     ChevronRight,
     Loader2,
-    X
+    X,
+    TrendingUp
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 
 interface SidebarProps {
-    activeTab: 'climate' | 'plots';
-    setActiveTab: (tab: 'climate' | 'plots') => void;
+    activeTab: 'climate' | 'plots' | 'estrategia';
+    setActiveTab: (tab: 'climate' | 'plots' | 'estrategia') => void;
     onNavigate: (view: 'landing' | 'login' | 'register' | 'dashboard') => void;
     isOpen?: boolean;
     onClose?: () => void;
@@ -32,7 +33,7 @@ export function Sidebar({ activeTab, setActiveTab, onNavigate, isOpen = true, on
             .substring(0, 2);
     };
 
-    const handleTabClick = (tab: 'climate' | 'plots') => {
+    const handleTabClick = (tab: 'climate' | 'plots' | 'estrategia') => {
         setActiveTab(tab);
         onClose?.();
     };
@@ -92,6 +93,13 @@ export function Sidebar({ activeTab, setActiveTab, onNavigate, isOpen = true, on
                     >
                         <div className="flex items-center gap-3"><MapIcon size={20} className={activeTab === 'plots' ? 'text-brand-accent' : 'text-gray-400'} /> Gestão de Talhões</div>
                         {activeTab === 'plots' && <ChevronRight size={16} className="text-white/70" />}
+                    </button>
+                    <button
+                        onClick={() => handleTabClick('estrategia')}
+                        className={`w-full flex items-center justify-between px-4 py-3.5 font-bold text-sm rounded-xl transition-all ${activeTab === 'estrategia' ? 'bg-brand-primary text-white shadow-md shadow-brand-primary/20 translate-x-1' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}`}
+                    >
+                        <div className="flex items-center gap-3"><TrendingUp size={20} className={activeTab === 'estrategia' ? 'text-brand-accent' : 'text-gray-400'} /> Estratégia 2026</div>
+                        {activeTab === 'estrategia' && <ChevronRight size={16} className="text-white/70" />}
                     </button>
 
                     <p className="text-xs font-bold text-gray-400 uppercase tracking-widest pl-3 mb-4 mt-8">Energia & IA</p>
