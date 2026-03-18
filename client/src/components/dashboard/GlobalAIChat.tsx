@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { MessageSquare, X, Send, Loader2, Sparkles, Bot, User, Minimize2, Volume2, VolumeX, ChevronDown } from "lucide-react";
+import { MessageSquare, X, Send, Loader2, Sparkles, Bot, User, Minimize2, Volume2, VolumeX, ChevronDown, Mic, MicOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { useSpeech } from "@/hooks/use-speech";
+import { useSpeechRecognition } from "@/hooks/use-speech-recognition";
 
 interface Message {
     role: "user" | "assistant";
@@ -29,6 +30,30 @@ export function GlobalAIChat({ weatherContext = [] }: GlobalAIChatProps) {
     const { toast } = useToast();
     const { speak, stop, isSpeaking, isSupported, voices, selectedVoice, setSelectedVoice, currentText } = useSpeech();
 
+    const { isListening, transcript, startListening, stopListening, isSupported: isSTTSupported } = useSpeechRecognition(() => {
+        if (isSpeaking) stop();
+    });
+
+    useEffect(() => {
+        if (isListening && transcript) {
+            setMessage(transcript);
+        }
+    }, [transcript, isListening]);
+
+    const previousIsListening = useRef(false);
+    useEffect(() => {
+        if (previousIsListening.current && !isListening && transcript.trim().length > 0) {
+            const msg = transcript.trim();
+            if (msg && !chatMutation.isPending) {
+                const newHistory: Message[] = [...history, { role: "user", content: msg }];
+                setHistory(newHistory);
+                setMessage("");
+                chatMutation.mutate({ message: msg, history: newHistory, weatherContext });
+            }
+        }
+        previousIsListening.current = isListening;
+    }, [isListening, transcript, history, weatherContext]);
+
     const chatMutation = useMutation({
         mutationFn: async ({ message, history, weatherContext }: { message: string; history: Message[]; weatherContext: any[] }) => {
             const res = await apiRequest("POST", "/api/ai/chat", { message, history, weatherContext });
@@ -36,6 +61,10 @@ export function GlobalAIChat({ weatherContext = [] }: GlobalAIChatProps) {
         },
         onSuccess: (data) => {
             setHistory((prev) => [...prev, { role: "assistant", content: data.response }]);
+            // Auto speak the response
+            if (isSupported) {
+                setTimeout(() => speak(data.response), 300); // slight delay allowing UI to settle
+            }
         },
         onError: (error: Error) => {
             toast({
@@ -270,6 +299,19 @@ export function GlobalAIChat({ weatherContext = [] }: GlobalAIChatProps) {
                                         onChange={(e) => setMessage(e.target.value)}
                                         className="text-xs h-10 rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
                                     />
+                                    {isSTTSupported && (
+                                        <Button
+                                            type="button"
+                                            size="icon"
+                                            variant={isListening ? "destructive" : "secondary"}
+                                            className={cn("h-10 w-10 shrink-0 rounded-xl transition-all", isListening ? "animate-pulse" : "")}
+                                            onClick={() => isListening ? stopListening() : startListening()}
+                                            disabled={chatMutation.isPending}
+                                            title={isListening ? "Parar de ouvir (e enviar)" : "Falar com a IA"}
+                                        >
+                                            {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                                        </Button>
+                                    )}
                                     <Button
                                         type="submit"
                                         size="icon"

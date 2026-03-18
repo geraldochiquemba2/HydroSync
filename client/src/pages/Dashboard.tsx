@@ -12,7 +12,7 @@ import {
   Droplets, Map, Activity, CloudRain,
   Settings, User, Bell, ChevronRight, Menu, MapPin,
   Cloud, CloudLightning, Waves, Layers, Plus, Trash2, X, MessageSquare, Send, RefreshCw, CloudSun, Loader2,
-  Sprout, Sun, Wind, ThermometerSun, AlertTriangle, Sunrise, Eye, Gauge, Moon, Volume2, VolumeX
+  Sprout, Sun, Wind, ThermometerSun, AlertTriangle, Sunrise, Eye, Gauge, Moon, Volume2, VolumeX, Mic, MicOff
 } from "lucide-react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
@@ -37,6 +37,7 @@ import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetClose } from "@/components/ui/sheet";
 import { GlobalAIChat } from "@/components/dashboard/GlobalAIChat";
 import { useSpeech } from "@/hooks/use-speech";
+import { useSpeechRecognition } from "@/hooks/use-speech-recognition";
 
 // Assets generated
 import satelliteFarm from "@/assets/images/satellite-farm.png";
@@ -224,6 +225,28 @@ function AIChatBox({ plot, chatMutation, analyzeMutation }: { plot: Plot, chatMu
   const lastMessageRef = useRef<HTMLDivElement>(null);
   const { speak, stop, isSpeaking, isSupported, currentText } = useSpeech();
 
+  const { isListening, transcript, startListening, stopListening, isSupported: isSTTSupported } = useSpeechRecognition(() => {
+    if (isSpeaking) stop();
+  });
+
+  useEffect(() => {
+    if (isListening && transcript) {
+      setChatMessage(transcript);
+    }
+  }, [transcript, isListening]);
+
+  const previousIsListening = useRef(false);
+  useEffect(() => {
+    if (previousIsListening.current && !isListening && transcript.trim().length > 0) {
+      const msg = transcript.trim();
+      if (msg && !chatMutation.isPending) {
+        setChatMessage("");
+        chatMutation.mutate({ id: plot.id, message: msg });
+      }
+    }
+    previousIsListening.current = isListening;
+  }, [isListening, transcript, plot.id, chatMutation]);
+
   useEffect(() => {
     if (scrollRef.current) {
       const isLastMessageAssistant = history.length > 0 && history[history.length - 1].role === "assistant";
@@ -316,6 +339,19 @@ function AIChatBox({ plot, chatMutation, analyzeMutation }: { plot: Plot, chatMu
             }
           }}
         />
+        {isSTTSupported && (
+          <Button
+            type="button"
+            size="icon"
+            variant={isListening ? "destructive" : "secondary"}
+            className={cn("h-10 w-10 shrink-0 rounded-xl transition-all", isListening ? "animate-pulse" : "")}
+            onClick={() => isListening ? stopListening() : startListening()}
+            disabled={chatMutation.isPending}
+            title={isListening ? "Parar de ouvir" : "Falar com a IA"}
+          >
+            {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+          </Button>
+        )}
         <Button
           size="icon"
           className="h-10 w-10 shrink-0 rounded-xl shadow-lg shadow-primary/20"
@@ -591,13 +627,24 @@ export default function Dashboard() {
       const res = await apiRequest("POST", `/api/plots/${id}/chat`, { message });
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/plots"] });
       setChatMessage("");
       toast({
         title: "IA Respondeu",
         description: "Nova mensagem técnica disponível.",
       });
+      // Try to read Aloud using the browser's native speech synthesis to avoid passing hooks
+      if (typeof window !== "undefined" && window.speechSynthesis) {
+        setTimeout(() => {
+          const text = data.response ? data.response.toString().replace(/[*_#`\[\]()]/g, "") : "";
+          if (!text) return;
+          const utterance = new SpeechSynthesisUtterance(text);
+          utterance.lang = "pt-PT";
+          window.speechSynthesis.cancel();
+          window.speechSynthesis.speak(utterance);
+        }, 300);
+      }
     },
     onError: (error: Error) => {
       toast({
