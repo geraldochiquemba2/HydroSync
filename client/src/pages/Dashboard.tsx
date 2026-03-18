@@ -153,7 +153,11 @@ const WeatherLayerControl = ({
           {layers.map((layer) => (
             <button
               key={layer.id}
-              onClick={() => onLayerSelect(activeLayer === layer.id ? null : layer.id)}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onLayerSelect(activeLayer === layer.id ? null : layer.id);
+              }}
               className={cn(
                 "flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all",
                 activeLayer === layer.id
@@ -905,7 +909,7 @@ export default function Dashboard() {
                               <TileLayer
                                 key={activeWeatherLayer}
                                 attribution='&copy; OpenWeatherMap'
-                                url={`https://tile.openweathermap.org/map/${activeWeatherLayer}/{z}/{x}/{y}.png?appid=${import.meta.env.VITE_OPENWEATHER_API_KEY || 'de23633304cc83584c64369524097f74'}`}
+                                url={`https://tile.openweathermap.org/map/${activeWeatherLayer}/{z}/{x}/{y}.png?appid=${import.meta.env.VITE_OPENWEATHER_API_KEY || 'bd5e378503939ddaee76f12ad7a97608'}`}
                                 opacity={0.6}
                                 zIndex={500}
                               />
@@ -986,7 +990,7 @@ export default function Dashboard() {
                               <TileLayer
                                 key={activeWeatherLayer}
                                 attribution='&copy; OpenWeatherMap'
-                                url={`https://tile.openweathermap.org/map/${activeWeatherLayer}/{z}/{x}/{y}.png?appid=${import.meta.env.VITE_OPENWEATHER_API_KEY || 'de23633304cc83584c64369524097f74'}`}
+                                url={`https://tile.openweathermap.org/map/${activeWeatherLayer}/{z}/{x}/{y}.png?appid=${import.meta.env.VITE_OPENWEATHER_API_KEY || 'bd5e378503939ddaee76f12ad7a97608'}`}
                                 opacity={0.6}
                                 zIndex={500}
                               />
