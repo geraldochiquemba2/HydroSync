@@ -12,25 +12,34 @@ export function useSpeechRecognition(onSpeechStart?: () => void): UseSpeechRecog
     const [isListening, setIsListening] = useState(false);
     const [transcript, setTranscript] = useState("");
     const recognitionRef = useRef<any>(null);
+    const onSpeechStartRef = useRef(onSpeechStart);
+
+    // Keep the latest callback without triggering effect restarts
+    useEffect(() => {
+        onSpeechStartRef.current = onSpeechStart;
+    }, [onSpeechStart]);
 
     const isSupported = typeof window !== "undefined" && ("SpeechRecognition" in window || "webkitSpeechRecognition" in window);
 
     useEffect(() => {
         if (!isSupported) return;
 
-        const SpeechRecognition = window.SpeechRecognition || (window as any).webkitSpeechRecognition;
+        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
         const recognition = new SpeechRecognition();
 
         recognition.lang = "pt-PT";
-        recognition.continuous = false; // We want it to stop after a single sentence for push-to-talk style, or true for continuous
-        recognition.interimResults = true; // Provides real-time typing effect
+        // To allow natural typing/capture we can use continuous=false,
+        // but to ensure it stays open while speaking, we might use true,
+        // though false works well for "push/click to talk"
+        recognition.continuous = false;
+        recognition.interimResults = true;
 
         recognition.onstart = () => {
             setIsListening(true);
         };
 
         recognition.onaudiostart = () => {
-            if (onSpeechStart) onSpeechStart();
+            if (onSpeechStartRef.current) onSpeechStartRef.current();
         };
 
         recognition.onresult = (event: any) => {
@@ -56,10 +65,11 @@ export function useSpeechRecognition(onSpeechStart?: () => void): UseSpeechRecog
 
         return () => {
             if (recognitionRef.current) {
+                // Avoid aborting actively listening instance on unmount unless needed, but cleanup is essential
                 recognitionRef.current.abort();
             }
         };
-    }, [isSupported, onSpeechStart]);
+    }, [isSupported]);
 
     const startListening = useCallback(() => {
         if (!isSupported) return;
