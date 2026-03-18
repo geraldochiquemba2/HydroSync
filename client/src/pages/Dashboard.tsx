@@ -580,11 +580,17 @@ export default function Dashboard() {
     { id: "wind_new", label: "Vento", icon: <Wind className="w-3 h-3" />, color: "text-cyan-400" },
   ];
 
-  const { data: dbPlots = [], isLoading } = useQuery<DbPlot[]>({
+  const { data: dbPlots = [], isLoading, error: plotsError } = useQuery<DbPlot[]>({
     queryKey: ["/api/plots"],
   });
 
-  const plots: Plot[] = dbPlots.map((p: any) => {
+  if (plotsError) {
+    console.error("Erro na query /api/plots:", plotsError);
+  }
+
+  console.log("Dashboard Render - activeTab:", activeTab, "dbPlots length:", dbPlots.length);
+
+  const plots: Plot[] = (Array.isArray(dbPlots) ? dbPlots : []).map((p: any) => {
     let boundaryPoints = undefined;
     try {
       if (p.boundaryPoints && typeof p.boundaryPoints === 'string' && p.boundaryPoints.trim() !== '') {
@@ -599,6 +605,10 @@ export default function Dashboard() {
       boundaryPoints: Array.isArray(boundaryPoints) ? boundaryPoints : undefined
     };
   });
+
+  if (activeTab === "plots") {
+    console.log("Processados", plots.length, "talhões para exibição.");
+  }
 
   const createPlotMutation = useMutation({
     mutationFn: async (plot: InsertPlot) => {
