@@ -234,7 +234,7 @@ export async function registerRoutes(
         // Find weather based on province if available in context, or use default
         const pWeather = weatherContext.find((w: any) => w.id === p.id) || { name: "Desconhecida" };
         const agronomic = getAgronomicContext(p.crop, pWeather.name, p.plantingDate);
-        return `${p.name} (Cultura: ${p.crop}, Área: ${p.area}ha, Saúde: ${p.health}%, Fase: ${agronomic.growthStage}, Calendário: ${agronomic.calendar})`;
+        return `${p.name} (Cultura: ${p.crop}, Área: ${p.area}ha, Saúde: ${p.health}%, Localização: GPS Lat ${p.lat}, Lng ${p.lng}, Província ${pWeather.name}, Altitude ${p.altitude}m, Fase: ${agronomic.growthStage}, Calendário: ${agronomic.calendar})`;
       });
 
       const systemContext = `Você é o assistente Agrosatelite IA, um engenheiro agrônomo sênior especialista em Angola.
@@ -251,6 +251,7 @@ export async function registerRoutes(
       1. Você sabe exatamente se o plantio foi feito na janela certa.
       2. Você conhece as pragas e necessidades de cada fase de crescimento citada acima.
       3. Você cruza o clima local com a saúde do talhão para dar avisos proativos.
+      4. Você tem conhecimento preciso da localização dos talhões usando as coordenadas de latitude, longitude e província para responder questões sobre localização.
       
       Responda em Português de Angola. Seja técnico, sênior e extremamente preciso nas recomendações.`;
 
