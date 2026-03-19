@@ -31,13 +31,12 @@ export const CreditDossier: React.FC<CreditDossierProps> = ({ plot, user, onClos
             await new Promise(resolve => setTimeout(resolve, 500));
 
             const canvas = await html2canvas(dossierRef.current, {
-                scale: 1.5, // Reduced scale for better compatibility
+                scale: 2,
                 useCORS: true,
-                allowTaint: true,
                 logging: false,
                 backgroundColor: "#ffffff",
-                imageTimeout: 15000,
-                removeContainer: true,
+                windowWidth: dossierRef.current.scrollWidth,
+                windowHeight: dossierRef.current.scrollHeight,
             });
 
             const imgData = canvas.toDataURL("image/png");
@@ -59,11 +58,11 @@ export const CreditDossier: React.FC<CreditDossierProps> = ({ plot, user, onClos
                 description: "O seu dossiê foi descarregado.",
                 variant: "default",
             });
-        } catch (error) {
+        } catch (error: any) {
             console.error("PDF Export Error:", error);
             toast({
                 title: "Erro ao exportar",
-                description: "Não foi possível gerar o PDF. Tente novamente.",
+                description: `Não foi possível gerar o PDF. Detalhe: ${error.message || 'Erro desconhecido'}`,
                 variant: "destructive",
             });
         }
