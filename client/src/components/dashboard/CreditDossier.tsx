@@ -38,18 +38,20 @@ export const CreditDossier: React.FC<CreditDossierProps> = ({ plot, user, onClos
                 windowWidth: dossierRef.current.scrollWidth,
                 windowHeight: dossierRef.current.scrollHeight,
                 onclone: (clonedDoc) => {
-                    // Fix html2canvas lack of support for oklch (Tailwind v4 default)
-                    const elements = clonedDoc.getElementsByTagName("*");
-                    for (let i = 0; i < elements.length; i++) {
-                        const el = elements[i] as HTMLElement;
-                        const style = window.getComputedStyle(el);
-
-                        // Check common properties for oklch and replace with computed (standard) values
-                        if (style.color.includes("oklch")) el.style.color = style.color;
-                        if (style.backgroundColor.includes("oklch")) el.style.backgroundColor = style.backgroundColor;
-                        if (style.borderColor.includes("oklch")) el.style.borderColor = style.borderColor;
-                        if (style.fill.includes("oklch")) el.style.fill = style.fill;
-                        if (style.stroke.includes("oklch")) el.style.stroke = style.stroke;
+                    const styles = clonedDoc.getElementsByTagName("style");
+                    for (let i = 0; i < styles.length; i++) {
+                        const styleTag = styles[i];
+                        if (styleTag.innerHTML.includes("oklch")) {
+                            styleTag.innerHTML = styleTag.innerHTML.replace(/oklch\([^)]+\)/g, "rgb(100, 116, 139)");
+                        }
+                    }
+                    // Also check for links
+                    const links = clonedDoc.getElementsByTagName("link");
+                    for (let i = 0; i < links.length; i++) {
+                        if (links[i].rel === "stylesheet") {
+                            // Unfortunately we can't easily scrub external stylesheets in onclone sync
+                            // so we rely on the inline style overrides I added to the components
+                        }
                     }
                 }
             });
@@ -96,15 +98,15 @@ export const CreditDossier: React.FC<CreditDossierProps> = ({ plot, user, onClos
                     {/* Header */}
                     <div className="flex justify-between items-start border-b-2 border-slate-900 pb-6 mb-8">
                         <div>
-                            <h1 className="text-3xl font-black text-slate-900 tracking-tighter uppercase italic">
-                                HydroSync <span className="text-blue-600">IA</span>
+                            <h1 className="text-3xl font-black tracking-tighter uppercase italic" style={{ color: '#0f172a' }}>
+                                HydroSync <span style={{ color: '#2563eb' }}>IA</span>
                             </h1>
-                            <p className="text-xs font-bold text-slate-500 tracking-widest uppercase">
+                            <p className="text-xs font-bold tracking-widest uppercase" style={{ color: '#64748b' }}>
                                 Tecnologia Aero-Espacial & Inteligência Agronómica
                             </p>
                         </div>
                         <div className="text-right">
-                            <div className="bg-slate-900 text-white px-3 py-1 text-[10px] font-bold uppercase mb-1">
+                            <div className="px-3 py-1 text-[10px] font-bold uppercase mb-1" style={{ backgroundColor: '#0f172a', color: '#ffffff' }}>
                                 Relatório de Risco Tecnológico
                             </div>
                             <p className="text-xs text-slate-500 font-medium">
@@ -125,27 +127,27 @@ export const CreditDossier: React.FC<CreditDossierProps> = ({ plot, user, onClos
                     {/* Secção 1: Identificação do Proponente */}
                     <section className="mb-8">
                         <div className="flex items-center gap-2 mb-4">
-                            <div className="p-1.5 bg-blue-50 rounded">
-                                <Landmark className="w-5 h-5 text-blue-600" />
+                            <div className="p-1.5 rounded" style={{ backgroundColor: '#eff6ff' }}>
+                                <Landmark className="w-5 h-5" style={{ color: '#2563eb' }} />
                             </div>
-                            <h3 className="font-bold text-slate-900 uppercase text-sm tracking-wide">Identificação do Proponente</h3>
+                            <h3 className="font-bold uppercase text-sm tracking-wide" style={{ color: '#0f172a' }}>Identificação do Proponente</h3>
                         </div>
-                        <div className="grid grid-cols-2 gap-y-3 gap-x-8 bg-slate-50 p-6 rounded-xl border border-slate-100">
+                        <div className="grid grid-cols-2 gap-y-3 gap-x-8 p-6 rounded-xl border" style={{ backgroundColor: '#f8fafc', borderColor: '#f1f5f9' }}>
                             <div>
-                                <p className="text-[10px] text-slate-400 font-bold uppercase uppercase tracking-tighter mb-0.5">Nome do Proprietário/Empresa</p>
+                                <p className="text-[10px] font-bold uppercase tracking-tighter mb-0.5" style={{ color: '#94a3b8' }}>Nome do Proprietário/Empresa</p>
                                 <p className="text-sm font-semibold">{user.name}</p>
                             </div>
                             <div>
-                                <p className="text-[10px] text-slate-400 font-bold uppercase uppercase tracking-tighter mb-0.5">Contacto Telefónico</p>
+                                <p className="text-[10px] font-bold uppercase tracking-tighter mb-0.5" style={{ color: '#94a3b8' }}>Contacto Telefónico</p>
                                 <p className="text-sm font-semibold">{user.phone}</p>
                             </div>
                             <div>
-                                <p className="text-[10px] text-slate-400 font-bold uppercase uppercase tracking-tighter mb-0.5">Designação do Talhão</p>
+                                <p className="text-[10px] font-bold uppercase tracking-tighter mb-0.5" style={{ color: '#94a3b8' }}>Designação do Talhão</p>
                                 <p className="text-sm font-semibold">{plot.name}</p>
                             </div>
                             <div>
-                                <p className="text-[10px] text-slate-400 font-bold uppercase uppercase tracking-tighter mb-0.5">Cultura Implementada</p>
-                                <Badge className="bg-blue-600/10 text-blue-700 hover:bg-blue-600/10 border-blue-200">{plot.crop}</Badge>
+                                <p className="text-[10px] font-bold uppercase tracking-tighter mb-0.5" style={{ color: '#94a3b8' }}>Cultura Implementada</p>
+                                <Badge style={{ backgroundColor: 'rgba(37, 99, 235, 0.1)', color: '#1d4ed8', borderColor: '#bfdbfe' }}>{plot.crop}</Badge>
                             </div>
                         </div>
                     </section>
@@ -177,15 +179,15 @@ export const CreditDossier: React.FC<CreditDossierProps> = ({ plot, user, onClos
                         </div>
                     </section>
 
-                    {/* Secção 3: Parecer Técnico da IA Agrosatelite */}
+                    {/* Secção 3: Parecer Técnico da IA HydroSync */}
                     <section className="mb-8">
                         <div className="flex items-center gap-2 mb-4">
-                            <div className="p-1.5 bg-purple-50 rounded">
-                                <ShieldCheck className="w-5 h-5 text-purple-600" />
+                            <div className="p-1.5 rounded" style={{ backgroundColor: '#f5f3ff' }}>
+                                <ShieldCheck className="w-5 h-5" style={{ color: '#7c3aed' }} />
                             </div>
-                            <h3 className="font-bold text-slate-900 uppercase text-sm tracking-wide">Parecer da Inteligência Agronómica</h3>
+                            <h3 className="font-bold uppercase text-sm tracking-wide" style={{ color: '#0f172a' }}>Parecer da Inteligência Agronómica</h3>
                         </div>
-                        <div className="bg-slate-900 text-slate-100 p-8 rounded-2xl shadow-xl relative overflow-hidden">
+                        <div className="p-8 rounded-2xl shadow-xl relative overflow-hidden" style={{ backgroundColor: '#0f172a', color: '#f1f5f9' }}>
                             {/* Decorators */}
                             <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full -mr-16 -mt-16 blur-3xl"></div>
                             <div className="absolute bottom-0 left-0 w-32 h-32 bg-purple-500/10 rounded-full -ml-16 -mb-16 blur-3xl"></div>
@@ -210,9 +212,9 @@ export const CreditDossier: React.FC<CreditDossierProps> = ({ plot, user, onClos
                     </section>
 
                     {/* Secção 4: Nota para Instituições Financeiras (BAI / FADA) */}
-                    <section className="mb-12 border-l-4 border-blue-600 pl-6 py-2">
-                        <h4 className="text-[11px] font-black uppercase text-blue-600 mb-2">Nota para o Analista de Risco (Banco BAI / FADA)</h4>
-                        <p className="text-[10px] text-slate-600 leading-relaxed text-justify">
+                    <section className="mb-12 border-l-4 pl-6 py-2" style={{ borderColor: '#2563eb' }}>
+                        <h4 className="text-[11px] font-black uppercase mb-2" style={{ color: '#2563eb' }}>Nota para o Analista de Risco (Banco BAI / FADA)</h4>
+                        <p className="text-[10px] leading-relaxed text-justify" style={{ color: '#475569' }}>
                             Este dossiê atesta que a exploração agrícola identificada utiliza o sistema de gestão de precisão **HydroSync IA**, cumprindo com os requisitos de modernização tecnológica exigidos nas políticas de crédito agrícola de 2026. A monitorização digital contínua permite uma mitigação de risco superior a 75% em comparação com métodos tradicionais, garantindo maior previsibilidade no escoamento e produtividade.
                         </p>
                     </section>
@@ -286,8 +288,8 @@ export const CreditDossier: React.FC<CreditDossierProps> = ({ plot, user, onClos
     );
 };
 
-const Badge = ({ children, className }: { children: React.ReactNode, className?: string }) => (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border ${className}`}>
+const Badge = ({ children, className, style }: { children: React.ReactNode, className?: string, style?: React.CSSProperties }) => (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border ${className}`} style={style}>
         {children}
     </span>
 );
