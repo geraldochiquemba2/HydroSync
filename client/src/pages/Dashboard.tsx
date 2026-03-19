@@ -41,6 +41,7 @@ import { useSpeechRecognition } from "@/hooks/use-speech-recognition";
 import { useAuth } from "@/hooks/use-auth";
 import { CreditDossier } from "@/components/dashboard/CreditDossier";
 import { StrategicRecommendations } from "@/components/dashboard/StrategicRecommendations";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 // Assets generated
 import satelliteFarm from "@/assets/images/satellite-farm.png";
@@ -224,7 +225,14 @@ function MapController({ center, zoom }: { center: [number, number], zoom: numbe
 function AIChatBox({ plot, chatMutation, analyzeMutation }: { plot: Plot, chatMutation: any, analyzeMutation: any }) {
   const [chatMessage, setChatMessage] = useState("");
   const [isConversing, setIsConversing] = useState(false);
-  const history = plot.chatHistory ? JSON.parse(plot.chatHistory) : [];
+  let history = [];
+  try {
+    history = plot.chatHistory ? JSON.parse(plot.chatHistory) : [];
+    if (!Array.isArray(history)) history = [];
+  } catch (e) {
+    console.error("Erro ao processar histórico de chat:", e);
+    history = [];
+  }
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastMessageRef = useRef<HTMLDivElement>(null);
   const { speak, stop, isSpeaking, isSupported, currentText } = useSpeech();
@@ -423,9 +431,16 @@ function AIAnalysisDialog({
 
   if (!plot) return null;
 
+  let boundaryPoints = undefined;
+  try {
+    boundaryPoints = plot.boundaryPoints ? JSON.parse(plot.boundaryPoints) : undefined;
+  } catch (e) {
+    console.error("Erro ao processar limites no diálogo:", e);
+  }
+
   const plotForDisplay: Plot = {
     ...plot,
-    boundaryPoints: plot.boundaryPoints ? JSON.parse(plot.boundaryPoints) : undefined
+    boundaryPoints: Array.isArray(boundaryPoints) ? boundaryPoints : undefined
   };
 
   return (
@@ -828,33 +843,38 @@ export default function Dashboard() {
                     Array(18).fill(0).map((_, i) => (
                       <Card key={i} className="h-40 animate-pulse bg-slate-100 dark:bg-slate-800" />
                     ))
-                  ) : provincialWeather?.map((p) => (
-                    <Card
-                      key={p.name}
-                      className={`p-4 cursor-pointer hover:shadow-md transition-all border-slate-200 group ${selectedProvince?.name === p.name ? 'ring-2 ring-primary border-primary' : ''} ${isSwitchingProvince && selectedProvince?.name === p.name ? 'opacity-50' : ''}`}
-                      onClick={() => handleProvinceSelect(p)}
-                    >
-                      <div className="text-[10px] uppercase font-bold text-slate-400 group-hover:text-primary transition-colors">{p.name}</div>
-                      <div className="mt-2 flex items-center justify-between">
-                        <div className="text-2xl font-bold text-slate-800 dark:text-white">{p.weather.temp}°</div>
-                        {(() => {
-                          const desc = p.weather.description.toLowerCase();
-                          const isDay = p.weather.isDay;
-                          if (desc.includes("chuva") || desc.includes("aguaceiros")) return <CloudRain className="w-5 h-5 text-blue-400" />;
-                          if (desc.includes("trovoada")) return <CloudLightning className="w-5 h-5 text-purple-400" />;
-                          return isDay ?
-                            <Sun className="w-5 h-5 text-yellow-500" /> :
-                            <Moon className="w-5 h-5 text-blue-300" />;
-                        })()}
-                      </div>
-                      <div className="mt-2 flex items-center gap-2 text-[10px] text-slate-500">
-                        <Wind className="w-3 h-3" /> {p.weather.windSpeed} km/h
-                      </div>
-                      <div className="mt-1 text-[9px] text-slate-400 italic">
-                        {p.weather.description}
-                      </div>
-                    </Card>
-                  ))}
+                  ) : provincialWeather?.map((p) => {
+                    const weather = p?.weather;
+                    if (!weather) return null;
+
+                    return (
+                      <Card
+                        key={p.name}
+                        className={`p-4 cursor-pointer hover:shadow-md transition-all border-slate-200 group ${selectedProvince?.name === p.name ? 'ring-2 ring-primary border-primary' : ''} ${isSwitchingProvince && selectedProvince?.name === p.name ? 'opacity-50' : ''}`}
+                        onClick={() => handleProvinceSelect(p)}
+                      >
+                        <div className="text-[10px] uppercase font-bold text-slate-400 group-hover:text-primary transition-colors">{p.name}</div>
+                        <div className="mt-2 flex items-center justify-between">
+                          <div className="text-2xl font-bold text-slate-800 dark:text-white">{weather.temp ?? "--"}°</div>
+                          {(() => {
+                            const desc = (weather.description || "").toLowerCase();
+                            const isDay = weather.isDay;
+                            if (desc.includes("chuva") || desc.includes("aguaceiros")) return <CloudRain className="w-5 h-5 text-blue-400" />;
+                            if (desc.includes("trovoada")) return <CloudLightning className="w-5 h-5 text-purple-400" />;
+                            return isDay ?
+                              <Sun className="w-5 h-5 text-yellow-500" /> :
+                              <Moon className="w-5 h-5 text-blue-300" />;
+                          })()}
+                        </div>
+                        <div className="mt-2 flex items-center gap-2 text-[10px] text-slate-500">
+                          <Wind className="w-3 h-3" /> {weather.windSpeed ?? "0"} km/h
+                        </div>
+                        <div className="mt-1 text-[9px] text-slate-400 italic">
+                          {weather.description || "Sem dados"}
+                        </div>
+                      </Card>
+                    );
+                  })}
                 </div>
 
                 {selectedProvince && (
@@ -1303,106 +1323,108 @@ export default function Dashboard() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   {plots.map(plot => (
-                    <Card key={plot.id} className="glass-panel overflow-hidden group relative">
-                      <div className="h-32 bg-slate-200 relative overflow-hidden">
-                        {plot.lat && plot.lng && !isNaN(Number(plot.lat)) && !isNaN(Number(plot.lng)) ? (
-                          <MapContainer
-                            center={[Number(plot.lat), Number(plot.lng)]}
-                            zoom={13}
-                            style={{ height: '100%', width: '100%' }}
-                            zoomControl={false}
-                            attributionControl={false}
-                            dragging={false}
-                            scrollWheelZoom={false}
-                            doubleClickZoom={false}
-                          >
-                            <TileLayer
-                              url="https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
-                              subdomains={['mt0', 'mt1', 'mt2', 'mt3']}
-                            />
-                            {plot.boundaryPoints && (
-                              <Polygon
-                                positions={plot.boundaryPoints}
-                                pathOptions={{ color: 'yellow', fillColor: 'yellow', fillOpacity: 0.3 }}
+                    <ErrorBoundary key={plot.id} name={`PlotCard-${plot.name}`}>
+                      <Card className="glass-panel overflow-hidden group relative">
+                        <div className="h-32 bg-slate-200 relative overflow-hidden">
+                          {plot.lat && plot.lng && !isNaN(Number(plot.lat.toString().replace(',', '.'))) && !isNaN(Number(plot.lng.toString().replace(',', '.'))) ? (
+                            <MapContainer
+                              center={[Number(plot.lat.toString().replace(',', '.')), Number(plot.lng.toString().replace(',', '.'))]}
+                              zoom={13}
+                              style={{ height: '100%', width: '100%' }}
+                              zoomControl={false}
+                              attributionControl={false}
+                              dragging={false}
+                              scrollWheelZoom={false}
+                              doubleClickZoom={false}
+                            >
+                              <TileLayer
+                                url="https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
+                                subdomains={['mt0', 'mt1', 'mt2', 'mt3']}
                               />
-                            )}
-                          </MapContainer>
-                        ) : (
-                          <img src={satelliteFarm} className="w-full h-full object-cover opacity-50" />
-                        )}
-                        <div className="absolute inset-0 flex items-center justify-center font-bold text-white text-xl drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] z-10">{plot.name}</div>
-                        <Button
-                          variant="destructive"
-                          size="icon"
-                          className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
-                          onClick={() => removePlot(plot.id)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                      <CardContent className="p-4 space-y-3">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-slate-500">Cultura</span>
-                          <span className="font-medium">{plot.crop}</span>
+                              {plot.boundaryPoints && Array.isArray(plot.boundaryPoints) && plot.boundaryPoints.length >= 3 && (
+                                <Polygon
+                                  positions={plot.boundaryPoints}
+                                  pathOptions={{ color: 'yellow', fillColor: 'yellow', fillOpacity: 0.3 }}
+                                />
+                              )}
+                            </MapContainer>
+                          ) : (
+                            <img src={satelliteFarm} className="w-full h-full object-cover opacity-50" />
+                          )}
+                          <div className="absolute inset-0 flex items-center justify-center font-bold text-white text-xl drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] z-10">{plot.name}</div>
+                          <Button
+                            variant="destructive"
+                            size="icon"
+                            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
+                            onClick={() => removePlot(plot.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
                         </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-slate-500">Área</span>
-                          <span className="font-medium">{plot.area} ha</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-slate-500">Saúde</span>
-                          <Badge variant="outline" className="text-primary border-primary/20 bg-primary/5">{plot.health}%</Badge>
-                        </div>
-
-                        <div className="pt-2 mt-2 border-t border-slate-100 dark:border-slate-800">
-                          <div className="flex items-center gap-2 text-[10px] font-mono text-slate-400">
-                            <MapPin className="w-3 h-3" /> {plot.lat}, {plot.lng}
+                        <CardContent className="p-4 space-y-3">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-slate-500">Cultura</span>
+                            <span className="font-medium">{plot.crop}</span>
                           </div>
-                          <div className="flex items-center gap-2 text-[10px] font-mono text-slate-400 mt-0.5">
-                            <Activity className="w-3 h-3" /> Elev: {plot.altitude}m
+                          <div className="flex justify-between text-sm">
+                            <span className="text-slate-500">Área</span>
+                            <span className="font-medium">{plot.area} ha</span>
                           </div>
-                        </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-slate-500">Saúde</span>
+                            <Badge variant="outline" className="text-primary border-primary/20 bg-primary/5">{plot.health || "0"}%</Badge>
+                          </div>
 
-                        {/* Real-time soil moisture per plot */}
-                        <PlotSoilMoistureBadge plotId={plot.id} />
+                          <div className="pt-2 mt-2 border-t border-slate-100 dark:border-slate-800">
+                            <div className="flex items-center gap-2 text-[10px] font-mono text-slate-400">
+                              <MapPin className="w-3 h-3" /> {plot.lat}, {plot.lng}
+                            </div>
+                            <div className="flex items-center gap-2 text-[10px] font-mono text-slate-400 mt-0.5">
+                              <Activity className="w-3 h-3" /> Elev: {plot.altitude}m
+                            </div>
+                          </div>
 
-                        <div className="flex flex-col gap-2 mt-2 w-full">
-                          <div className="flex gap-2">
+                          {/* Real-time soil moisture per plot */}
+                          <PlotSoilMoistureBadge plotId={plot.id} />
+
+                          <div className="flex flex-col gap-2 mt-2 w-full">
+                            <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="flex-1 group-hover:bg-primary group-hover:text-white transition-colors gap-2"
+                                onClick={() => viewOnMap(plot)}
+                              >
+                                <Eye className="w-4 h-4" /> Detalhes
+                              </Button>
+
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                className="flex-1 bg-blue-600/10 text-blue-600 hover:bg-blue-600/20 border border-blue-200 gap-2 font-bold"
+                                onClick={() => setViewingDossierPlot(plot as DbPlot)}
+                              >
+                                <FileText className="w-4 h-4" /> Dossiê
+                              </Button>
+                            </div>
+
                             <Button
                               variant="outline"
                               size="sm"
-                              className="flex-1 group-hover:bg-primary group-hover:text-white transition-colors gap-2"
-                              onClick={() => viewOnMap(plot)}
+                              className="w-full text-rose-500 border-rose-100 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 h-8 text-[10px] uppercase font-bold"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (confirm("Tem certeza que deseja excluir este talhão?")) {
+                                  removePlot(plot.id);
+                                }
+                              }}
                             >
-                              <Eye className="w-4 h-4" /> Detalhes
-                            </Button>
-
-                            <Button
-                              variant="secondary"
-                              size="sm"
-                              className="flex-1 bg-blue-600/10 text-blue-600 hover:bg-blue-600/20 border border-blue-200 gap-2 font-bold"
-                              onClick={() => setViewingDossierPlot(plot as DbPlot)}
-                            >
-                              <FileText className="w-4 h-4" /> Dossiê
+                              <Trash2 className="w-3 h-3 mr-1" /> Remover Talhão
                             </Button>
                           </div>
-
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="w-full text-rose-500 border-rose-100 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 h-8 text-[10px] uppercase font-bold"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (confirm("Tem certeza que deseja excluir este talhão?")) {
-                                removePlot(plot.id);
-                              }
-                            }}
-                          >
-                            <Trash2 className="w-3 h-3 mr-1" /> Remover Talhão
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
+                        </CardContent>
+                      </Card>
+                    </ErrorBoundary>
                   ))}
                   {plots.length === 0 && (
                     <div className="col-span-full py-12 text-center text-slate-500 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
