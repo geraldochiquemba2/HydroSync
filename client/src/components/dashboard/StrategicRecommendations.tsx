@@ -518,5 +518,6 @@ export const StrategicRecommendations: React.FC = () => {
                     </ScrollArea>
                 </DialogContent>
             </Dialog>
-            );
+        </div>
+    );
 };
