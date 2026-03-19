@@ -21,7 +21,7 @@ export const CreditDossier: React.FC<CreditDossierProps> = ({ plot, user, onClos
     const exportPDF = async () => {
         toast({
             title: "Gerando Dossiê",
-            description: "A preparar o seu PDF (Motor Nativo)...",
+            description: "A preparar o seu PDF (Motor Dinâmico)...",
         });
 
         try {
@@ -36,22 +36,34 @@ export const CreditDossier: React.FC<CreditDossierProps> = ({ plot, user, onClos
             const slateGray = [100, 116, 139];  // #64748b
             const lightBg = [248, 250, 252];   // #f8fafc
 
+            let yPos = 0;
+
+            const checkNewPage = (neededHeight: number) => {
+                if (yPos + neededHeight > 275) {
+                    pdf.addPage();
+                    yPos = 20;
+                    return true;
+                }
+                return false;
+            };
+
             // --- HEADER ---
             pdf.setFillColor(slateDark[0], slateDark[1], slateDark[2]);
-            pdf.rect(0, 0, 210, 15, 'F'); // Dark top bar
+            pdf.rect(0, 0, 210, 15, 'F');
 
+            yPos = 30;
             pdf.setFont("helvetica", "bold");
             pdf.setFontSize(24);
             pdf.setTextColor(slateDark[0], slateDark[1], slateDark[2]);
-            pdf.text("HydroSync", 20, 30);
+            pdf.text("HydroSync", 20, yPos);
 
             pdf.setTextColor(bluePrimary[0], bluePrimary[1], bluePrimary[2]);
-            pdf.text("IA", 68, 30);
+            pdf.text("IA", 68, yPos);
 
             pdf.setFontSize(8);
             pdf.setFont("helvetica", "normal");
             pdf.setTextColor(slateGray[0], slateGray[1], slateGray[2]);
-            pdf.text("TECNOLOGIA AERO-ESPACIAL & INTELIGÊNCIA AGRONÓMICA", 20, 35);
+            pdf.text("TECNOLOGIA AERO-ESPACIAL & INTELIGÊNCIA AGRONÓMICA", 20, yPos + 5);
 
             // Relatório Info Box
             pdf.setFillColor(slateDark[0], slateDark[1], slateDark[2]);
@@ -71,99 +83,121 @@ export const CreditDossier: React.FC<CreditDossierProps> = ({ plot, user, onClos
             pdf.line(20, 45, 190, 45);
 
             // --- TÍTULO CENTRAL ---
+            yPos = 55;
             pdf.setFontSize(16);
             pdf.setTextColor(slateDark[0], slateDark[1], slateDark[2]);
             pdf.setFont("helvetica", "bold");
-            pdf.text("DOSSIÊ DE CRÉDITO AGRÍCOLA - CAMPANHA 2026", 105, 55, { align: "center" });
+            pdf.text("DOSSIÊ DE CRÉDITO AGRÍCOLA - CAMPANHA 2026", 105, yPos, { align: "center" });
 
             pdf.setDrawColor(bluePrimary[0], bluePrimary[1], bluePrimary[2]);
             pdf.setLineWidth(1);
-            pdf.line(95, 58, 115, 58);
+            pdf.line(95, yPos + 3, 115, yPos + 3);
 
             // --- SECÇÃO 1: IDENTIFICAÇÃO ---
+            yPos = 70;
             pdf.setFontSize(10);
             pdf.setTextColor(slateDark[0], slateDark[1], slateDark[2]);
-            pdf.text("1. IDENTIFICAÇÃO DO PROPONENTE", 20, 70);
+            pdf.text("1. IDENTIFICAÇÃO DO PROPONENTE", 20, yPos);
 
             pdf.setFillColor(lightBg[0], lightBg[1], lightBg[2]);
-            pdf.rect(20, 73, 170, 25, 'F');
+            pdf.rect(20, yPos + 3, 170, 25, 'F');
 
             pdf.setFontSize(8);
             pdf.setTextColor(slateGray[0], slateGray[1], slateGray[2]);
-            pdf.text("NOME DO PROPRIETÁRIO/EMPRESA", 25, 78);
-            pdf.text("CULTURA IMPLEMENTADA", 110, 78);
+            pdf.text("NOME DO PROPRIETÁRIO/EMPRESA", 25, yPos + 8);
+            pdf.text("CULTURA IMPLEMENTADA", 110, yPos + 8);
 
             pdf.setTextColor(slateDark[0], slateDark[1], slateDark[2]);
             pdf.setFont("helvetica", "bold");
-            pdf.text(user.name.toUpperCase(), 25, 83);
-            pdf.text(plot.crop.toUpperCase(), 110, 83);
+            pdf.text(user.name?.toUpperCase() || "---", 25, yPos + 13);
+            pdf.text(plot.crop?.toUpperCase() || "---", 110, yPos + 13);
 
             pdf.setFont("helvetica", "normal");
             pdf.setTextColor(slateGray[0], slateGray[1], slateGray[2]);
-            pdf.text("CONTACTO TELEFÓNICO", 25, 90);
-            pdf.text("DESIGNAÇÃO DO TALHÃO", 110, 90);
+            pdf.text("CONTACTO TELEFÓNICO", 25, yPos + 20);
+            pdf.text("DESIGNAÇÃO DO TALHÃO", 110, yPos + 20);
 
             pdf.setTextColor(slateDark[0], slateDark[1], slateDark[2]);
             pdf.setFont("helvetica", "bold");
-            pdf.text(user.phone || "---", 25, 95);
-            pdf.text(plot.name.toUpperCase(), 110, 95);
+            pdf.text(user.phone || "---", 25, yPos + 25);
+            pdf.text(plot.name?.toUpperCase() || "---", 110, yPos + 25);
 
             // --- SECÇÃO 2: DADOS TÉCNICOS ---
+            yPos = 108;
             pdf.setFont("helvetica", "bold");
-            pdf.text("2. ESPECIFICAÇÕES TÉCNICAS (VIA SATÉLITE)", 20, 108);
+            pdf.text("2. ESPECIFICAÇÕES TÉCNICAS (VIA SATÉLITE)", 20, yPos);
 
             pdf.setFont("helvetica", "normal");
             pdf.setFontSize(8);
-            pdf.text(`ÁREA TOTAL: ${plot.area} HECTARES`, 20, 115);
-            pdf.text(`LOCALIZAÇÃO GPS: LAT ${plot.lat} / LNG ${plot.lng}`, 20, 120);
-            pdf.text(`ALTITUDE MÉDIA: ${plot.altitude || "---"}M`, 20, 125);
-            pdf.text(`ÍNDICE DE VIGOR (NDVI): ${plot.health}%`, 20, 130);
+            pdf.text(`ÁREA TOTAL: ${plot.area} HECTARES`, 20, yPos + 7);
+            pdf.text(`LOCALIZAÇÃO GPS: LAT ${plot.lat} / LNG ${plot.lng}`, 20, yPos + 12);
+            pdf.text(`ALTITUDE MÉDIA: ${plot.altitude || "---"}M`, 20, yPos + 17);
+            pdf.text(`ÍNDICE DE VIGOR (NDVI): ${plot.health}%`, 20, yPos + 22);
 
             // --- SECÇÃO 3: PARECER IA ---
+            yPos = 145;
             pdf.setFont("helvetica", "bold");
-            pdf.text("3. PARECER TÉCNICO DA INTELIGÊNCIA AGRONÓMICA HYDROSYNC", 20, 145);
-
-            pdf.setFillColor(slateDark[0], slateDark[1], slateDark[2]);
-            pdf.rect(20, 148, 170, 60, 'F');
-
-            pdf.setTextColor(255, 255, 255);
-            pdf.setFont("helvetica", "italic");
-            pdf.setFontSize(9);
+            pdf.text("3. PARECER DA INTELIGÊNCIA AGRONÓMICA HYDROSYNC", 20, yPos);
 
             const analysisText = plot.analysis?.replace(/\*\*/g, '') || "Análise técnica em processamento...";
             const splitAnalysis = pdf.splitTextToSize(analysisText, 160);
-            pdf.text(splitAnalysis, 25, 155);
+            const lineCount = splitAnalysis.length;
+            const lineHeight = 4.5;
+            const blockHeight = (lineCount * lineHeight) + 15;
+
+            // Check if we need a new page before drawing the box
+            if (yPos + blockHeight > 270) {
+                pdf.addPage();
+                yPos = 20;
+                pdf.setFont("helvetica", "bold");
+                pdf.text("3. PARECER DA IA (CONTINUAÇÃO)", 20, yPos);
+                yPos += 5;
+            }
+
+            pdf.setFillColor(slateDark[0], slateDark[1], slateDark[2]);
+            pdf.rect(20, yPos + 3, 170, blockHeight, 'F');
+
+            pdf.setTextColor(255, 255, 255);
+            pdf.setFont("helvetica", "italic");
+            pdf.setFontSize(8.5);
+            pdf.text(splitAnalysis, 25, yPos + 10);
 
             // Confiança
             pdf.setFont("helvetica", "bold");
             pdf.setFontSize(7);
             pdf.setTextColor(bluePrimary[0], bluePrimary[1], bluePrimary[2]);
-            pdf.text("GRAU DE CONFIANÇA TÉCNICA: 98.4% (VALIDADO)", 25, 203);
+            pdf.text("GRAU DE CONFIANÇA TÉCNICA: 98.4% (VALIDADO)", 25, yPos + blockHeight - 2);
+
+            yPos += blockHeight + 15;
 
             // --- NOTA BANCÁRIA ---
+            checkNewPage(30);
             pdf.setDrawColor(bluePrimary[0], bluePrimary[1], bluePrimary[2]);
-            pdf.setLineWidth(0.5);
-            pdf.line(20, 215, 20, 230);
+            pdf.setLineWidth(1);
+            pdf.line(20, yPos, 20, yPos + 15);
 
             pdf.setTextColor(slateDark[0], slateDark[1], slateDark[2]);
             pdf.setFont("helvetica", "bold");
             pdf.setFontSize(8);
-            pdf.text("NOTA PARA O ANALISTA DE RISCO (BANCO BAI / FADA):", 25, 220);
+            pdf.text("NOTA PARA O ANALISTA DE RISCO (BANCO BAI / FADA):", 25, yPos + 5);
 
             pdf.setFont("helvetica", "normal");
-            pdf.setFontSize(7);
+            pdf.setFontSize(7.5);
             const notaText = "Este dossiê atesta que a exploração agrícola identificada utiliza o sistema de gestão de precisão HydroSync IA, cumprindo com os requisitos de modernização tecnológica exigidos nas políticas de crédito agrícola de 2026. A monitorização digital contínua permite uma mitigação de risco superior a 75%.";
-            pdf.text(pdf.splitTextToSize(notaText, 160), 25, 224);
+            pdf.text(pdf.splitTextToSize(notaText, 160), 25, yPos + 9);
 
             // --- FOOTER ---
+            const footerY = 275;
             pdf.setDrawColor(200, 200, 200);
-            pdf.line(20, 260, 190, 260);
+            pdf.setLineWidth(0.2);
+            pdf.line(20, footerY - 5, 190, footerY - 5);
 
             pdf.setFontSize(8);
-            pdf.text("ASSINATURA DIGITAL DO SISTEMA", 20, 265);
+            pdf.setTextColor(slateGray[0], slateGray[1], slateGray[2]);
+            pdf.text("ASSINATURA DIGITAL DO SISTEMA", 20, footerY);
             pdf.setFontSize(6);
             pdf.setFont("courier", "normal");
-            pdf.text(`SGN: SHA256/HYDRO-SYNC-SECURE-${plot.id.substring(0, 8).toUpperCase()}`, 20, 268);
+            pdf.text(`SGN: SHA256/HYDRO-SYNC-SECURE-${plot.id.substring(0, 8).toUpperCase()}`, 20, footerY + 3);
 
             // Final Save
             pdf.save(`Dossie_Credito_${plot.name.replace(/\s+/g, '_')}_2026.pdf`);
@@ -322,7 +356,7 @@ export const CreditDossier: React.FC<CreditDossierProps> = ({ plot, user, onClos
                         <div>
                             <div className="w-40 h-1 bg-slate-200 mb-2"></div>
                             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Assinatura Digital do Sistema</p>
-                            <p className="text-[8px] font-mono text-slate-300 mt-1">SGN: SHA256/AGRO-SAT-SECURE-27E35B5</p>
+                            <p className="text-[8px] font-mono text-slate-300 mt-1">SGN: SHA256/HYDRO-SYNC-SECURE-{plot.id.substring(0, 8).toUpperCase()}</p>
                         </div>
                         <div className="bg-slate-50 p-2 rounded border border-slate-200">
                             {/* Simulação de QR Code para validação bancária */}
