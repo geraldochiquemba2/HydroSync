@@ -145,7 +145,7 @@ export function GlobalAIChat({ weatherContext = [] }: GlobalAIChatProps) {
                                         <Bot className="w-5 h-5 text-white" />
                                     </div>
                                     <div>
-                                        <CardTitle className="text-sm font-bold font-heading">AgroSatelite Assistente</CardTitle>
+                                        <CardTitle className="text-sm font-bold font-heading">HydroSync Assistente</CardTitle>
                                         <div className="flex items-center gap-1.5">
                                             <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
                                             <span className="text-[10px] text-white/70 uppercase font-bold tracking-widest">IA Especialista Online</span>

@@ -104,7 +104,7 @@ export function Sidebar({ activeTab, setActiveTab, onNavigate, isOpen = true, on
 
                     <p className="text-xs font-bold text-gray-400 uppercase tracking-widest pl-3 mb-4 mt-8">Energia & IA</p>
                     <button className="w-full flex items-center justify-between px-4 py-3 font-medium text-sm rounded-xl text-brand-dark hover:bg-brand-dark/5 transition-colors">
-                        <div className="flex items-center gap-3"><BrainCircuit size={20} className="text-brand-accent" /> Agrosatelite IA <span className="text-[9px] bg-brand-primary text-white px-1.5 py-0.5 rounded-full ml-1">ATIVO</span></div>
+                        <div className="flex items-center gap-3"><BrainCircuit size={20} className="text-brand-accent" /> HydroSync IA <span className="text-[9px] bg-brand-primary text-white px-1.5 py-0.5 rounded-full ml-1">ATIVO</span></div>
                     </button>
                 </nav>
 

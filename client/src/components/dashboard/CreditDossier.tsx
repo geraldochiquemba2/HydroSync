@@ -31,12 +31,13 @@ export const CreditDossier: React.FC<CreditDossierProps> = ({ plot, user, onClos
             await new Promise(resolve => setTimeout(resolve, 500));
 
             const canvas = await html2canvas(dossierRef.current, {
-                scale: 2,
+                scale: 1.5, // Reduced scale for better compatibility
                 useCORS: true,
+                allowTaint: true,
                 logging: false,
                 backgroundColor: "#ffffff",
-                scrollX: 0,
-                scrollY: -window.scrollY,
+                imageTimeout: 15000,
+                removeContainer: true,
             });
 
             const imgData = canvas.toDataURL("image/png");
@@ -82,7 +83,7 @@ export const CreditDossier: React.FC<CreditDossierProps> = ({ plot, user, onClos
                     <div className="flex justify-between items-start border-b-2 border-slate-900 pb-6 mb-8">
                         <div>
                             <h1 className="text-3xl font-black text-slate-900 tracking-tighter uppercase italic">
-                                Agro-Satelite <span className="text-blue-600">IA</span>
+                                HydroSync <span className="text-blue-600">IA</span>
                             </h1>
                             <p className="text-xs font-bold text-slate-500 tracking-widest uppercase">
                                 Tecnologia Aero-Espacial & Inteligência Agronómica
@@ -198,7 +199,7 @@ export const CreditDossier: React.FC<CreditDossierProps> = ({ plot, user, onClos
                     <section className="mb-12 border-l-4 border-blue-600 pl-6 py-2">
                         <h4 className="text-[11px] font-black uppercase text-blue-600 mb-2">Nota para o Analista de Risco (Banco BAI / FADA)</h4>
                         <p className="text-[10px] text-slate-600 leading-relaxed text-justify">
-                            Este dossiê atesta que a exploração agrícola identificada utiliza o sistema de gestão de precisão **Agro-Satélite IA**, cumprindo com os requisitos de modernização tecnológica exigidos nas políticas de crédito agrícola de 2026. A monitorização digital contínua permite uma mitigação de risco superior a 75% em comparação com métodos tradicionais, garantindo maior previsibilidade no escoamento e produtividade.
+                            Este dossiê atesta que a exploração agrícola identificada utiliza o sistema de gestão de precisão **HydroSync IA**, cumprindo com os requisitos de modernização tecnológica exigidos nas políticas de crédito agrícola de 2026. A monitorização digital contínua permite uma mitigação de risco superior a 75% em comparação com métodos tradicionais, garantindo maior previsibilidade no escoamento e produtividade.
                         </p>
                     </section>
 

@@ -294,7 +294,7 @@ function AIChatBox({ plot, chatMutation, analyzeMutation }: { plot: Plot, chatMu
   return (
     <div className="space-y-4">
       <h4 className="text-xs font-bold text-slate-500 uppercase flex items-center gap-2">
-        <MessageSquare className="w-3 h-3" /> Chat Agrosatelite IA
+        <MessageSquare className="w-3 h-3" /> Chat HydroSync IA
       </h4>
 
       <div
