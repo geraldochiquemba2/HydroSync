@@ -6,6 +6,7 @@ import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
+import { useToast } from "@/hooks/use-toast";
 
 interface CreditDossierProps {
     plot: Plot;
@@ -15,30 +16,56 @@ interface CreditDossierProps {
 
 export const CreditDossier: React.FC<CreditDossierProps> = ({ plot, user, onClose }) => {
     const dossierRef = useRef<HTMLDivElement>(null);
+    const { toast } = useToast();
 
     const exportPDF = async () => {
         if (!dossierRef.current) return;
 
-        const canvas = await html2canvas(dossierRef.current, {
-            scale: 2,
-            useCORS: true,
-            logging: false,
-            backgroundColor: "#ffffff"
+        toast({
+            title: "Gerando Dossiê",
+            description: "A preparar o seu PDF para download...",
         });
 
-        const imgData = canvas.toDataURL("image/png");
-        const pdf = new jsPDF({
-            orientation: "portrait",
-            unit: "mm",
-            format: "a4"
-        });
+        try {
+            // Pequeno delay para garantir renderização de ícones/badges
+            await new Promise(resolve => setTimeout(resolve, 500));
 
-        const imgProps = pdf.getImageProperties(imgData);
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+            const canvas = await html2canvas(dossierRef.current, {
+                scale: 2,
+                useCORS: true,
+                logging: false,
+                backgroundColor: "#ffffff",
+                scrollX: 0,
+                scrollY: -window.scrollY,
+            });
 
-        pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
-        pdf.save(`Dossie_Credito_${plot.name.replace(/\s+/g, '_')}_2026.pdf`);
+            const imgData = canvas.toDataURL("image/png");
+            const pdf = new jsPDF({
+                orientation: "portrait",
+                unit: "mm",
+                format: "a4"
+            });
+
+            const imgProps = pdf.getImageProperties(imgData);
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+            pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+            pdf.save(`Dossie_Credito_${plot.name.replace(/\s+/g, '_')}_2026.pdf`);
+
+            toast({
+                title: "Sucesso!",
+                description: "O seu dossiê foi descarregado.",
+                variant: "default",
+            });
+        } catch (error) {
+            console.error("PDF Export Error:", error);
+            toast({
+                title: "Erro ao exportar",
+                description: "Não foi possível gerar o PDF. Tente novamente.",
+                variant: "destructive",
+            });
+        }
     };
 
     return (
@@ -210,12 +237,26 @@ export const CreditDossier: React.FC<CreditDossierProps> = ({ plot, user, onClos
                                 area: plot.area,
                                 location: { lat: plot.lat, lng: plot.lng },
                                 ndvi: plot.health,
-                                analysis: plot.analysis
+                                analysis: plot.analysis?.replace(/\*\*/g, '') // Scrubbing asterisks from raw view too
                             }, null, 2);
                             const win = window.open("", "_blank");
                             if (win) {
-                                win.document.write(`<pre>${rawData}</pre>`);
-                                win.document.title = `Dados Brutos - ${plot.name}`;
+                                win.document.write(`
+                                    <html>
+                                        <head>
+                                            <title>Dados Brutos - ${plot.name}</title>
+                                            <style>
+                                                body { font-family: monospace; padding: 20px; background: #0f172a; color: #38bdf8; }
+                                                pre { white-space: pre-wrap; word-wrap: break-word; }
+                                            </style>
+                                        </head>
+                                        <body>
+                                            <h2>Dados Brutos de Monitorização</h2>
+                                            <pre>${rawData}</pre>
+                                        </body>
+                                    </html>
+                                `);
+                                win.document.close();
                             }
                         }}
                     >
