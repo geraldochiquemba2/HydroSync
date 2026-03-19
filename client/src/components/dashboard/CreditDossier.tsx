@@ -10,9 +10,10 @@ import { pt } from "date-fns/locale";
 interface CreditDossierProps {
     plot: Plot;
     user: User;
+    onClose: () => void;
 }
 
-export const CreditDossier: React.FC<CreditDossierProps> = ({ plot, user }) => {
+export const CreditDossier: React.FC<CreditDossierProps> = ({ plot, user, onClose }) => {
     const dossierRef = useRef<HTMLDivElement>(null);
 
     const exportPDF = async () => {
@@ -148,7 +149,7 @@ export const CreditDossier: React.FC<CreditDossierProps> = ({ plot, user }) => {
                             <div className="absolute bottom-0 left-0 w-32 h-32 bg-purple-500/10 rounded-full -ml-16 -mb-16 blur-3xl"></div>
 
                             <p className="text-xs leading-relaxed text-slate-300 whitespace-pre-line italic">
-                                {plot.analysis || "A aguardar análise técnica processual..."}
+                                {plot.analysis?.replace(/\*\*/g, '') || "A aguardar análise técnica processual..."}
                             </p>
 
                             <div className="mt-6 pt-6 border-t border-slate-800 flex justify-between items-center">
@@ -193,13 +194,37 @@ export const CreditDossier: React.FC<CreditDossierProps> = ({ plot, user }) => {
                 </div>
             </div>
 
-            <div className="flex justify-end gap-3 mt-2">
-                <Button variant="outline" className="gap-2">
-                    <FileText className="w-4 h-4" /> Visualizar Dados Brutos
+            <div className="flex justify-between items-center mt-4">
+                <Button variant="ghost" onClick={onClose} className="text-slate-500 hover:text-slate-900 font-bold uppercase text-[10px]">
+                    Fechar
                 </Button>
-                <Button onClick={exportPDF} className="bg-blue-600 hover:bg-blue-700 text-white gap-2 shadow-lg shadow-blue-500/20">
-                    <Download className="w-4 h-4" /> Baixar Dossiê (PDF Final)
-                </Button>
+                <div className="flex gap-3">
+                    <Button
+                        variant="outline"
+                        className="gap-2 text-[10px] font-bold uppercase"
+                        onClick={() => {
+                            const rawData = JSON.stringify({
+                                id: plot.id,
+                                name: plot.name,
+                                crop: plot.crop,
+                                area: plot.area,
+                                location: { lat: plot.lat, lng: plot.lng },
+                                ndvi: plot.health,
+                                analysis: plot.analysis
+                            }, null, 2);
+                            const win = window.open("", "_blank");
+                            if (win) {
+                                win.document.write(`<pre>${rawData}</pre>`);
+                                win.document.title = `Dados Brutos - ${plot.name}`;
+                            }
+                        }}
+                    >
+                        <FileText className="w-4 h-4" /> Visualizar Dados Brutos
+                    </Button>
+                    <Button onClick={exportPDF} className="bg-blue-600 hover:bg-blue-700 text-white gap-2 shadow-lg shadow-blue-500/20 font-bold uppercase text-[10px]">
+                        <Download className="w-4 h-4" /> Baixar PDF
+                    </Button>
+                </div>
             </div>
         </div>
     );

@@ -1468,7 +1468,11 @@ export default function Dashboard() {
             </DialogDescription>
           </DialogHeader>
           {viewingDossierPlot && user && (
-            <CreditDossier plot={viewingDossierPlot} user={user} />
+            <CreditDossier
+              plot={viewingDossierPlot}
+              user={user}
+              onClose={() => setViewingDossierPlot(null)}
+            />
           )}
         </DialogContent>
       </Dialog>
