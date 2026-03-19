@@ -37,6 +37,21 @@ export const CreditDossier: React.FC<CreditDossierProps> = ({ plot, user, onClos
                 backgroundColor: "#ffffff",
                 windowWidth: dossierRef.current.scrollWidth,
                 windowHeight: dossierRef.current.scrollHeight,
+                onclone: (clonedDoc) => {
+                    // Fix html2canvas lack of support for oklch (Tailwind v4 default)
+                    const elements = clonedDoc.getElementsByTagName("*");
+                    for (let i = 0; i < elements.length; i++) {
+                        const el = elements[i] as HTMLElement;
+                        const style = window.getComputedStyle(el);
+
+                        // Check common properties for oklch and replace with computed (standard) values
+                        if (style.color.includes("oklch")) el.style.color = style.color;
+                        if (style.backgroundColor.includes("oklch")) el.style.backgroundColor = style.backgroundColor;
+                        if (style.borderColor.includes("oklch")) el.style.borderColor = style.borderColor;
+                        if (style.fill.includes("oklch")) el.style.fill = style.fill;
+                        if (style.stroke.includes("oklch")) el.style.stroke = style.stroke;
+                    }
+                }
             });
 
             const imgData = canvas.toDataURL("image/png");
