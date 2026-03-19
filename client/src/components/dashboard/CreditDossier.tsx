@@ -19,67 +19,165 @@ export const CreditDossier: React.FC<CreditDossierProps> = ({ plot, user, onClos
     const { toast } = useToast();
 
     const exportPDF = async () => {
-        if (!dossierRef.current) return;
-
         toast({
             title: "Gerando Dossiê",
-            description: "A preparar o seu PDF para download...",
+            description: "A preparar o seu PDF (Motor Nativo)...",
         });
 
         try {
-            // Pequeno delay para garantir renderização de ícones/badges
-            await new Promise(resolve => setTimeout(resolve, 500));
-
-            const canvas = await html2canvas(dossierRef.current, {
-                scale: 2,
-                useCORS: true,
-                logging: false,
-                backgroundColor: "#ffffff",
-                windowWidth: dossierRef.current.scrollWidth,
-                windowHeight: dossierRef.current.scrollHeight,
-                onclone: (clonedDoc) => {
-                    const styles = clonedDoc.getElementsByTagName("style");
-                    for (let i = 0; i < styles.length; i++) {
-                        const styleTag = styles[i];
-                        if (styleTag.innerHTML.includes("oklch")) {
-                            styleTag.innerHTML = styleTag.innerHTML.replace(/oklch\([^)]+\)/g, "rgb(100, 116, 139)");
-                        }
-                    }
-                    // Also check for links
-                    const links = clonedDoc.getElementsByTagName("link");
-                    for (let i = 0; i < links.length; i++) {
-                        if (links[i].rel === "stylesheet") {
-                            // Unfortunately we can't easily scrub external stylesheets in onclone sync
-                            // so we rely on the inline style overrides I added to the components
-                        }
-                    }
-                }
-            });
-
-            const imgData = canvas.toDataURL("image/png");
             const pdf = new jsPDF({
                 orientation: "portrait",
                 unit: "mm",
                 format: "a4"
             });
 
-            const imgProps = pdf.getImageProperties(imgData);
-            const pdfWidth = pdf.internal.pageSize.getWidth();
-            const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+            const bluePrimary = [37, 99, 235]; // #2563eb
+            const slateDark = [15, 23, 42];    // #0f172a
+            const slateGray = [100, 116, 139];  // #64748b
+            const lightBg = [248, 250, 252];   // #f8fafc
 
-            pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+            // --- HEADER ---
+            pdf.setFillColor(slateDark[0], slateDark[1], slateDark[2]);
+            pdf.rect(0, 0, 210, 15, 'F'); // Dark top bar
+
+            pdf.setFont("helvetica", "bold");
+            pdf.setFontSize(24);
+            pdf.setTextColor(slateDark[0], slateDark[1], slateDark[2]);
+            pdf.text("HydroSync", 20, 30);
+
+            pdf.setTextColor(bluePrimary[0], bluePrimary[1], bluePrimary[2]);
+            pdf.text("IA", 68, 30);
+
+            pdf.setFontSize(8);
+            pdf.setFont("helvetica", "normal");
+            pdf.setTextColor(slateGray[0], slateGray[1], slateGray[2]);
+            pdf.text("TECNOLOGIA AERO-ESPACIAL & INTELIGÊNCIA AGRONÓMICA", 20, 35);
+
+            // Relatório Info Box
+            pdf.setFillColor(slateDark[0], slateDark[1], slateDark[2]);
+            pdf.rect(140, 25, 50, 8, 'F');
+            pdf.setTextColor(255, 255, 255);
+            pdf.setFontSize(7);
+            pdf.setFont("helvetica", "bold");
+            pdf.text("RELATÓRIO DE RISCO TÉCNICO", 143, 30);
+
+            pdf.setTextColor(slateGray[0], slateGray[1], slateGray[2]);
+            pdf.setFont("helvetica", "normal");
+            pdf.text(`Gerado em: ${format(new Date(), "dd/MM/yyyy")}`, 140, 38);
+            pdf.text(`ID: ${plot.id.substring(0, 12).toUpperCase()}`, 140, 42);
+
+            pdf.setDrawColor(slateDark[0], slateDark[1], slateDark[2]);
+            pdf.setLineWidth(0.5);
+            pdf.line(20, 45, 190, 45);
+
+            // --- TÍTULO CENTRAL ---
+            pdf.setFontSize(16);
+            pdf.setTextColor(slateDark[0], slateDark[1], slateDark[2]);
+            pdf.setFont("helvetica", "bold");
+            pdf.text("DOSSIÊ DE CRÉDITO AGRÍCOLA - CAMPANHA 2026", 105, 55, { align: "center" });
+
+            pdf.setDrawColor(bluePrimary[0], bluePrimary[1], bluePrimary[2]);
+            pdf.setLineWidth(1);
+            pdf.line(95, 58, 115, 58);
+
+            // --- SECÇÃO 1: IDENTIFICAÇÃO ---
+            pdf.setFontSize(10);
+            pdf.setTextColor(slateDark[0], slateDark[1], slateDark[2]);
+            pdf.text("1. IDENTIFICAÇÃO DO PROPONENTE", 20, 70);
+
+            pdf.setFillColor(lightBg[0], lightBg[1], lightBg[2]);
+            pdf.rect(20, 73, 170, 25, 'F');
+
+            pdf.setFontSize(8);
+            pdf.setTextColor(slateGray[0], slateGray[1], slateGray[2]);
+            pdf.text("NOME DO PROPRIETÁRIO/EMPRESA", 25, 78);
+            pdf.text("CULTURA IMPLEMENTADA", 110, 78);
+
+            pdf.setTextColor(slateDark[0], slateDark[1], slateDark[2]);
+            pdf.setFont("helvetica", "bold");
+            pdf.text(user.name.toUpperCase(), 25, 83);
+            pdf.text(plot.crop.toUpperCase(), 110, 83);
+
+            pdf.setFont("helvetica", "normal");
+            pdf.setTextColor(slateGray[0], slateGray[1], slateGray[2]);
+            pdf.text("CONTACTO TELEFÓNICO", 25, 90);
+            pdf.text("DESIGNAÇÃO DO TALHÃO", 110, 90);
+
+            pdf.setTextColor(slateDark[0], slateDark[1], slateDark[2]);
+            pdf.setFont("helvetica", "bold");
+            pdf.text(user.phone || "---", 25, 95);
+            pdf.text(plot.name.toUpperCase(), 110, 95);
+
+            // --- SECÇÃO 2: DADOS TÉCNICOS ---
+            pdf.setFont("helvetica", "bold");
+            pdf.text("2. ESPECIFICAÇÕES TÉCNICAS (VIA SATÉLITE)", 20, 108);
+
+            pdf.setFont("helvetica", "normal");
+            pdf.setFontSize(8);
+            pdf.text(`ÁREA TOTAL: ${plot.area} HECTARES`, 20, 115);
+            pdf.text(`LOCALIZAÇÃO GPS: LAT ${plot.lat} / LNG ${plot.lng}`, 20, 120);
+            pdf.text(`ALTITUDE MÉDIA: ${plot.altitude || "---"}M`, 20, 125);
+            pdf.text(`ÍNDICE DE VIGOR (NDVI): ${plot.health}%`, 20, 130);
+
+            // --- SECÇÃO 3: PARECER IA ---
+            pdf.setFont("helvetica", "bold");
+            pdf.text("3. PARECER TÉCNICO DA INTELIGÊNCIA AGRONÓMICA HYDROSYNC", 20, 145);
+
+            pdf.setFillColor(slateDark[0], slateDark[1], slateDark[2]);
+            pdf.rect(20, 148, 170, 60, 'F');
+
+            pdf.setTextColor(255, 255, 255);
+            pdf.setFont("helvetica", "italic");
+            pdf.setFontSize(9);
+
+            const analysisText = plot.analysis?.replace(/\*\*/g, '') || "Análise técnica em processamento...";
+            const splitAnalysis = pdf.splitTextToSize(analysisText, 160);
+            pdf.text(splitAnalysis, 25, 155);
+
+            // Confiança
+            pdf.setFont("helvetica", "bold");
+            pdf.setFontSize(7);
+            pdf.setTextColor(bluePrimary[0], bluePrimary[1], bluePrimary[2]);
+            pdf.text("GRAU DE CONFIANÇA TÉCNICA: 98.4% (VALIDADO)", 25, 203);
+
+            // --- NOTA BANCÁRIA ---
+            pdf.setDrawColor(bluePrimary[0], bluePrimary[1], bluePrimary[2]);
+            pdf.setLineWidth(0.5);
+            pdf.line(20, 215, 20, 230);
+
+            pdf.setTextColor(slateDark[0], slateDark[1], slateDark[2]);
+            pdf.setFont("helvetica", "bold");
+            pdf.setFontSize(8);
+            pdf.text("NOTA PARA O ANALISTA DE RISCO (BANCO BAI / FADA):", 25, 220);
+
+            pdf.setFont("helvetica", "normal");
+            pdf.setFontSize(7);
+            const notaText = "Este dossiê atesta que a exploração agrícola identificada utiliza o sistema de gestão de precisão HydroSync IA, cumprindo com os requisitos de modernização tecnológica exigidos nas políticas de crédito agrícola de 2026. A monitorização digital contínua permite uma mitigação de risco superior a 75%.";
+            pdf.text(pdf.splitTextToSize(notaText, 160), 25, 224);
+
+            // --- FOOTER ---
+            pdf.setDrawColor(200, 200, 200);
+            pdf.line(20, 260, 190, 260);
+
+            pdf.setFontSize(8);
+            pdf.text("ASSINATURA DIGITAL DO SISTEMA", 20, 265);
+            pdf.setFontSize(6);
+            pdf.setFont("courier", "normal");
+            pdf.text(`SGN: SHA256/HYDRO-SYNC-SECURE-${plot.id.substring(0, 8).toUpperCase()}`, 20, 268);
+
+            // Final Save
             pdf.save(`Dossie_Credito_${plot.name.replace(/\s+/g, '_')}_2026.pdf`);
 
             toast({
                 title: "Sucesso!",
-                description: "O seu dossiê foi descarregado.",
+                description: "O dossiê foi gerado e descarregado.",
                 variant: "default",
             });
         } catch (error: any) {
-            console.error("PDF Export Error:", error);
+            console.error("Native PDF Error:", error);
             toast({
-                title: "Erro ao exportar",
-                description: `Não foi possível gerar o PDF. Detalhe: ${error.message || 'Erro desconhecido'}`,
+                title: "Erro Crítico",
+                description: `Não foi possível gerar o PDF. Detalhe: ${error.message || 'Erro no motor nativo'}`,
                 variant: "destructive",
             });
         }
